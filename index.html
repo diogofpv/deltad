@@ -1,0 +1,2188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PID TUNER - ΔD FPV</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#14171c;
+  --surface:#1c2029;
+  --surface2:#21262f;
+  --border:#2b303c;
+  --border-bright:#3a4150;
+  --accent:#4fd8c4;
+  --accent-dim:#357c70;
+  --green:#4fd8c4;
+  --yellow:#ffb84d;
+  --red:#ff6b5c;
+  --roll:#4f9dff;
+  --pitch:#ff6b5c;
+  --violet:#9b8cff;
+  --text:#eef1f5;
+  --muted:#848b9b;
+  --tint-g:rgba(79,216,196,.12);
+  --tint-y:rgba(255,184,77,.12);
+  --tint-r:rgba(255,107,92,.12);
+  --track:rgba(255,255,255,.07);
+  --display:'Space Grotesk',ui-sans-serif,sans-serif;
+  --body:'IBM Plex Sans',ui-sans-serif,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{background:var(--bg);}
+body{
+  background:var(--bg);
+  color:var(--text);font-family:var(--body);min-height:100vh;position:relative;
+}
+header{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+.hdr{max-width:1100px;margin:auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.logo{font-family:var(--display);font-size:1rem;font-weight:700;color:var(--accent);letter-spacing:.01em;}
+nav{display:flex;gap:6px;flex-wrap:wrap;}
+.tab{padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:.78rem;font-weight:600;font-family:var(--body);transition:all .15s;}
+.tab:hover{border-color:var(--border-bright);color:var(--text);}
+.tab.active{background:var(--accent);color:#0b1512;border-color:var(--accent);}
+main{max-width:1100px;margin:auto;padding:20px;position:relative;z-index:1;}
+.step{display:none;}.step.active{display:block;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px;margin-bottom:18px;position:relative;}
+.ctitle{font-family:var(--display);font-size:1rem;font-weight:700;color:var(--accent);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;min-width:0;}.g2>*{min-width:0;overflow:hidden;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+@media(max-width:700px){.g2,.g3{grid-template-columns:1fr;}.preview-layout{grid-template-columns:1fr!important;}.slider-grid{grid-template-columns:repeat(2,1fr)!important;}}
+label.fl{display:block;font-family:var(--body);font-size:.72rem;color:var(--muted);margin-bottom:5px;font-weight:600;}
+input[type=text],select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:.85rem;color:var(--text);font-family:var(--body);}
+input[type=text]:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--tint-g);}
+.dz{border:1.5px dashed var(--border-bright);border-radius:14px;padding:22px 16px;text-align:center;background:var(--surface2);cursor:pointer;position:relative;}
+.dz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.dz:hover{border-color:var(--accent);background:#262c37;}
+.dz-txt{font-family:var(--body);color:var(--accent);font-weight:600;font-size:.85rem;}
+.dz-hint{color:var(--muted);font-size:.72rem;margin-top:4px;}
+.log-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+.log-item{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.8rem;}
+.log-name{flex:1;font-family:var(--body);font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.btn{padding:9px 18px;border-radius:10px;border:1px solid transparent;font-weight:600;font-size:.82rem;cursor:pointer;font-family:var(--body);}
+.btn-p{background:var(--accent);color:#0b1512;}.btn-p:hover:not(:disabled){background:#6ee4d3;}
+.btn-o{background:var(--tint-y);color:var(--yellow);border:1px solid var(--yellow);}
+.btn-o:hover:not(:disabled){background:rgba(255,184,77,.2);}
+.btn-r{background:var(--tint-r);color:var(--red);border:1px solid var(--red);font-size:.76rem;padding:5px 10px;}
+.btn-r:hover:not(:disabled){background:rgba(255,107,92,.2);}
+.btn-full{width:100%;margin-top:10px;}
+.btn:disabled{background:var(--surface2);color:#4a5160;border-color:var(--border);cursor:not-allowed;}
+.btn-row{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
+.al{border-radius:12px;padding:12px 14px;font-family:var(--body);font-size:.82rem;margin-bottom:14px;border:1px solid;}
+.al-w{background:var(--tint-y);border-color:var(--yellow);color:var(--yellow);}
+.al-s{background:var(--tint-g);border-color:var(--green);color:var(--green);}
+.al-i{background:rgba(79,157,255,.10);border-color:var(--roll);color:var(--roll);}
+.al-r{background:var(--tint-r);border-color:var(--red);color:var(--red);}
+.inst{background:rgba(79,157,255,.08);border-left:3px solid var(--roll);border-radius:0 10px 10px 0;padding:12px 14px;margin-bottom:14px;font-family:var(--body);font-size:.8rem;color:var(--text);line-height:1.6;}
+.cli{background:#0e1116;border:1px solid var(--border);border-radius:12px;padding:14px;font-family:var(--mono);font-size:.76rem;color:var(--accent);white-space:pre-wrap;line-height:1.7;position:relative;}
+.cli-copy{position:absolute;top:8px;right:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 9px;border-radius:8px;font-size:.7rem;cursor:pointer;font-family:var(--body);}
+.cli-copy:hover{border-color:var(--accent);color:var(--accent);}
+.cbox{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px;height:300px;position:relative;overflow:hidden;}
+.ctop{font-family:var(--body);font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:5px;}
+.sl-block{margin-bottom:14px;}
+.sl-hdr{display:flex;justify-content:space-between;margin-bottom:4px;}
+.sl-name{font-family:var(--body);font-size:.78rem;font-weight:500;color:var(--muted);}
+.sl-val{font-family:var(--mono);font-size:.85rem;font-weight:700;color:var(--accent);}
+input[type=range]{width:100%;accent-color:var(--accent);-webkit-appearance:none;appearance:none;height:4px;background:var(--border-bright);border-radius:4px;outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;background:var(--accent);border-radius:50%;cursor:pointer;box-shadow:0 0 0 3px rgba(79,216,196,.2);}
+input[type=range]::-moz-range-thumb{width:15px;height:15px;background:var(--accent);border:none;border-radius:50%;cursor:pointer;box-shadow:0 0 0 3px rgba(79,216,196,.2);}
+.mbox{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;}
+.mlbl{font-family:var(--body);font-size:.66rem;color:var(--muted);text-transform:uppercase;margin-bottom:4px;letter-spacing:.05em;}
+.mval{font-family:var(--mono);font-size:1.15rem;font-weight:700;}
+.vg{color:var(--green);}.vw{color:var(--yellow);}.vb{color:var(--red);}
+table{width:100%;border-collapse:collapse;font-family:var(--body);font-size:.8rem;}
+th{background:var(--surface2);color:var(--muted);font-size:.68rem;font-weight:600;padding:7px 10px;text-align:left;border-bottom:1px solid var(--border-bright);text-transform:uppercase;letter-spacing:.04em;}
+td{padding:8px 10px;border-bottom:1px solid var(--border);}
+td.dnum,.tnum{font-family:var(--mono);}
+hr{border:none;border-top:1px solid var(--border);margin:18px 0;}
+</style>
+</head>
+<body>
+<header><div class="hdr">
+  <span class="logo">PID TUNER - ΔD FPV</span>
+  <nav id="nav"></nav>
+</div></header>
+<main id="main"></main>
+<script>
+// ═══ STATE ═══════════════════════════════════════════════════════════════
+const S={
+  drone:{frame:'',propSize:'5',motor:'',bfVersion:'4.5',kv:'',cells:''},
+  drones:[],           // list of registered drones: {id, frame, propSize, motor, bfVersion, kv, cells}
+  activeDroneId:null,  // id of the drone currently mirrored into S.drone
+  hoverBefore:null, hoverAfter:null,
+  filterBefore:null, filterAfter:null,
+  stepLogs:[], // max 5
+  sliders:{dGains:1.25,piGains:1.10,ffGains:0, dMax:0, iGains:0.40,pitchRollD:1.05,pitchRollPI:1.00,master:1.15},
+  originalSliders:null, // snapshot when BBL is loaded, for reset
+  bblPid:null,
+  _lastRollMet:[], _lastPitchMet:[],
+  ffFlightLog:null,       // parsed full-flight CSV (rolls + flips)
+  ffSuggested:null,       // {value, reasoning} — initial suggestion before flight
+  ffAnalysis:null,        // result of analyzing the uploaded flight log
+  ffConfirmed:null,       // 'confirmed' | 'adjusted' | null
+  ffNotes:{}              // individual notes per tuning factor (Camada 4)
+};
+const charts={};
+const LOG_COLORS=['#4f9dff','#ff6b5c','#4fd8c4','#ffb84d','#9b8cff'];
+const SLIDER_ORDER=[
+  {key:'dGains',id:'sl_dG',label:'D Gains',min:0,max:2,step:0.05},
+  {key:'piGains',id:'sl_piG',label:'P & I Gains',min:0,max:2,step:0.05},
+  {key:'ffGains',id:'sl_ffG',label:'Feed Forward Gains',min:0,max:2,step:0.05},
+  {key:'dMax',id:'sl_dM',label:'D Max',min:0,max:2,step:0.05},
+  {key:'iGains',id:'sl_iG',label:'I Gains',min:0,max:2,step:0.05},
+  {key:'pitchRollD',id:'sl_prD',label:'Pitch : Roll D',min:0,max:2,step:0.05},
+  {key:'pitchRollPI',id:'sl_prP',label:'Pitch : Roll P, I e FF',min:0,max:2,step:0.05},
+  {key:'master',id:'sl_mas',label:'Master Multiplier',min:0,max:2,step:0.05},
+];
+
+// ═══ THERMAL CONSTANTS (global — used in suggestion engine AND live slider) ═
+// D ceiling set to a flat 1.55 for every drone (per usuário: validado em
+// centenas de voos reais neste valor sem esquentar motores). O ajuste fino
+// por hélice/KV/bateria foi removido a pedido — o usuário prefere fazer o
+// ajuste fino olhando o gráfico de Step Response nos sliders.
+const D_SAFE_MAX_DEFAULT = 1.55; // teto de D Gains, igual para todos os drones
+const P_SAFE_MAX  = 1.60;   // hard P ceiling
+
+// Returns {value, calibrated, kv, cells} — teto fixo, não depende mais do motor.
+function computeDSafeMax(){
+  const kv=parseFloat(S.drone.kv)||0;
+  const cells=parseFloat(S.drone.cells)||0;
+  return{value:D_SAFE_MAX_DEFAULT, calibrated:false, kv, cells};
+}
+const THERMAL_LIMIT = 2.8;  // D_eff*1.0 + P_eff*0.4 must stay ≤ this
+// Thermal index formula: TI = D_eff + P_eff * 0.4
+// Zones: 0–59% = Safe, 60–84% = Attention, 85–100% = Risk
+function calcThermalPct(dGains, piGains, master){
+  const m = master||1;
+  const dEff = dGains * m;
+  const pEff = piGains * m;
+  return Math.min(100, Math.round((dEff + pEff*0.4) / THERMAL_LIMIT * 100));
+}
+function thermalZone(pct){
+  if(pct<60) return{label:'🟢 Seguro',     cls:'safe',    color:'var(--green)'};
+  if(pct<85) return{label:'🟡 Atenção',    cls:'warn',    color:'var(--yellow)'};
+  return             {label:'🔴 Risco Alto', cls:'danger',  color:'var(--red)'};
+}
+// ═══ FILE READ ═══════════════════════════════════════════════════════════
+function readText(file){return new Promise((ok,no)=>{const r=new FileReader();r.onload=e=>ok(e.target.result);r.onerror=no;r.readAsText(file);});}
+function readBuf(file,start,end){return new Promise((ok,no)=>{const r=new FileReader();r.onload=e=>ok(e.target.result);r.onerror=no;r.readAsArrayBuffer(file.slice(start,end??file.size));});}
+
+// ═══ CSV PARSER ════════════════════════════════════════════════════════════
+function parseCsvText(text,fileName){
+  const lines=text.split(/\r?\n/);
+  let hi=-1;
+  for(let i=0;i<lines.length;i++) if(lines[i].includes('gyroADC[0]')){hi=i;break;}
+  if(hi===-1) for(let i=0;i<lines.length;i++) if(lines[i].includes('time (us)')){hi=i;break;}
+  if(hi===-1) throw new Error('Cabeçalho gyroADC não encontrado no CSV.');
+  const hdrs=lines[hi].split(',').map(h=>h.trim().replace(/"/g,''));
+  const idx=k=>hdrs.findIndex(h=>h.includes(k));
+  const ti=idx('time'), gxi=idx('gyroADC[0]')>=0?idx('gyroADC[0]'):idx('gyroX');
+  const gyi=idx('gyroADC[1]')>=0?idx('gyroADC[1]'):idx('gyroY');
+  const gzi=idx('gyroADC[2]')>=0?idx('gyroADC[2]'):idx('gyroZ');
+  const sxi=idx('setpoint[0]'), syi=idx('setpoint[1]');
+  // Throttle: Blackbox Explorer exporta como rcCommand[3] (RC range) — normalizamos para 0-100%.
+  const thri=idx('rcCommand[3]')>=0?idx('rcCommand[3]'):idx('throttle');
+  // Gyro não-filtrado: com debug_mode = GYRO_SCALED (recomendado pela comunidade para
+  // análise de filtros), debug[0..2] = gyro cru (pré-filtro). Alguns builds do
+  // blackbox_decode exportam diretamente como gyroUnfilt[0..2].
+  const rxi=idx('gyroUnfilt[0]')>=0?idx('gyroUnfilt[0]'):idx('debug[0]');
+  const ryi=idx('gyroUnfilt[1]')>=0?idx('gyroUnfilt[1]'):idx('debug[1]');
+  const time=[],gx=[],gy=[],gz=[],spx=[],spy=[],thr=[],gxRaw=[],gyRaw=[];
+  for(let i=hi+1;i<lines.length;i++){
+    if(!lines[i].trim()||lines[i][0]==='E') continue;
+    const c=lines[i].split(',');
+    const t=parseFloat(c[ti]); if(isNaN(t)) continue;
+    time.push(t/1e6);
+    gx.push(parseFloat(c[gxi])||0);
+    gy.push(parseFloat(c[gyi])||0);
+    gz.push(parseFloat(c[gzi])||0);
+    spx.push(sxi>=0?parseFloat(c[sxi])||0:0);
+    spy.push(syi>=0?parseFloat(c[syi])||0:0);
+    thr.push(thri>=0?parseFloat(c[thri])||0:NaN);
+    gxRaw.push(rxi>=0?parseFloat(c[rxi]):NaN);
+    gyRaw.push(ryi>=0?parseFloat(c[ryi]):NaN);
+  }
+  if(time.length<64) throw new Error('Log muito curto.');
+  // Normaliza throttle para 0-100%. RC commands ficam tipicamente em ~1000-2000us.
+  const thrValid=thr.filter(v=>!isNaN(v));
+  let thrPct=null;
+  if(thrValid.length){
+    const tMin=Math.min(...thrValid), tMax=Math.max(...thrValid);
+    if(tMax>tMin) thrPct=thr.map(v=>isNaN(v)?null:Math.max(0,Math.min(100,(v-tMin)/(tMax-tMin)*100)));
+  }
+  const hasRaw=rxi>=0 && gxRaw.some(v=>!isNaN(v));
+  return{time,gx,gy,gz,spx,spy,fileName,thrPct,gxRaw:hasRaw?gxRaw:null,gyRaw:hasRaw?gyRaw:null};
+}
+
+async function parseHoverFile(file){
+  const ext=file.name.toLowerCase();
+  if(ext.endsWith('.csv')||ext.endsWith('.txt')||ext.endsWith('.log')){
+    return parseCsvText(await readText(file),file.name);
+  }
+  // BBL/BFL: tenta decodificar header ASCII + gyro via texto exportado ou header
+  const buf=await readBuf(file,0,131072);
+  const bytes=new Uint8Array(buf);
+  let text=''; for(let i=0;i<bytes.length;i++) text+=String.fromCharCode(bytes[i]);
+  if(text.includes('gyroADC[0]')) return parseCsvText(text,file.name);
+  // fallback: só gyro do início se houver linhas H mas sem CSV embutido
+  throw new Error('Para hover, use CSV exportado do Blackbox Explorer ou .bbl com dados legíveis.');
+}
+
+// ═══ BBL HEADER — sliders only ═════════════════════════════════════════════
+function hLinesToMap(hLines){
+  const hMap={};
+  for(const line of hLines){
+    const body=line.trim().replace(/^\s*H\s+/,'');
+    const colon=body.indexOf(':');
+    if(colon<0) continue;
+    hMap[body.slice(0,colon).trim()]=body.slice(colon+1).trim();
+  }
+  return hMap;
+}
+function parseSlidersFromHMap(hMap,fileName){
+  function sl(key,fallback=100){return parseFloat((hMap[key]||fallback+''))/100;}
+  const simplified=parseInt(hMap['simplified_pids_mode']||'0',10)>0;
+  const sliders={
+    dGains:sl('simplified_d_gain',100),
+    piGains:sl('simplified_pi_gain',100),
+    ffGains:sl('simplified_feedforward_gain',0),
+    dMax:sl('simplified_dmax_gain',0),
+    iGains:sl('simplified_i_gain',40),
+    pitchRollD:sl('simplified_pitch_d_gain',100),
+    pitchRollPI:sl('simplified_pitch_pi_gain',100),
+    master:sl('simplified_master_multiplier',100),
+  };
+  const rawPid=parseRawPidFromHMap(hMap);
+  return{simplified,sliders,craftName:hMap['Craft name']||'',firmware:hMap['Firmware revision']||'',fileName,rawPid};
+}
+// ═══ RAW PID (VALORES REAIS, ESTILO BETAFLIGHT) ════════════════════════════
+// rollPID/pitchPID/yawPID ("P,I,D") são extremamente estáveis no cabeçalho do
+// Blackbox desde a Betaflight 3.x — alta confiança nesses três.
+// D Max e Feedforward têm nomes de campo menos padronizados entre versões de
+// firmware, então tentamos várias chaves candidatas; se nenhuma bater, o
+// campo fica null e a UI mostra "—" em vez de inventar um número.
+function parseAxisTriplet(hMap,key){
+  const raw=hMap[key]; if(!raw) return null;
+  const p=raw.split(',').map(x=>parseFloat(x.trim()));
+  return(p.length>=3&&p.every(isFinite))?{P:p[0],I:p[1],D:p[2]}:null;
+}
+function parseScalarTriplet(hMap,key){
+  const raw=hMap[key]; if(!raw) return null;
+  const p=raw.split(',').map(x=>parseFloat(x.trim()));
+  return(p.length>=3&&p.every(isFinite))?{roll:p[0],pitch:p[1],yaw:p[2]}:null;
+}
+function findScalarPerAxis(hMap,tripletKeys,perAxisKeys){
+  for(const k of tripletKeys){const t=parseScalarTriplet(hMap,k); if(t) return t;}
+  const [rk,pk,yk]=perAxisKeys;
+  if(hMap[rk]!==undefined||hMap[pk]!==undefined||hMap[yk]!==undefined){
+    return{roll:parseFloat(hMap[rk]||0),pitch:parseFloat(hMap[pk]||0),yaw:parseFloat(hMap[yk]||0)};
+  }
+  return null;
+}
+function parseRawPidFromHMap(hMap){
+  const rollT=parseAxisTriplet(hMap,'rollPID');
+  const pitchT=parseAxisTriplet(hMap,'pitchPID');
+  const yawT=parseAxisTriplet(hMap,'yawPID');
+  if(!rollT||!pitchT||!yawT) return null; // sem os três, a tabela não tem base confiável
+  const dMax=findScalarPerAxis(hMap,['d_max'],['d_max_roll','d_max_pitch','d_max_yaw']);
+  const ff=findScalarPerAxis(hMap,['feedforward_weight','ff_weight'],['feedforward_roll','feedforward_pitch','feedforward_yaw']);
+  function axis(t,dm,f,k){return{P:t.P,I:t.I,D:t.D,DMax:dm?dm[k]:null,FF:f?f[k]:null};}
+  return{roll:axis(rollT,dMax,ff,'roll'),pitch:axis(pitchT,dMax,ff,'pitch'),yaw:axis(yawT,dMax,ff,'yaw')};
+}
+async function parseBBLSliders(file){
+  const buf=await readBuf(file,0,262144);
+  const bytes=new Uint8Array(buf);
+  let text=''; for(let i=0;i<bytes.length;i++) text+=String.fromCharCode(bytes[i]);
+  const hLines=text.split(/[\r\n]+/).filter(l=>l.startsWith('H '));
+  if(!hLines.length) throw new Error('Nenhuma linha H encontrada no .bbl/.bfl.');
+  const hMap=hLinesToMap(hLines);
+  const info=parseSlidersFromHMap(hMap,file.name);
+  if(!info.simplified) throw new Error('Sliders simplified não detectados neste log.');
+  return info;
+}
+
+// ═══ SPECTRUM / FILTERS ════════════════════════════════════════════════════
+function spectrum(signal,time){
+  const diffs=[];
+  for(let i=1;i<Math.min(time.length,3000);i++){const d=time[i]-time[i-1];if(d>0) diffs.push(d);}
+  diffs.sort((a,b)=>a-b);
+  const dt=diffs.length?diffs[Math.floor(diffs.length/2)]:0.001;
+  const fs=1/dt;
+  const N=Math.min(512,Math.pow(2,Math.floor(Math.log2(signal.length||1))));
+  if(N<32) return{freqs:[],power:[],fs,nyquist:fs/2,peaks:[]};
+  const win=Array.from({length:N},(_,n)=>0.5-0.5*Math.cos(2*Math.PI*n/(N-1)));
+  const hop=Math.floor(N/2), half=N/2;
+  const starts=[]; for(let s=0;s+N<=signal.length;s+=hop) starts.push(s);
+  const used=starts.length>24?Array.from({length:24},(_,i)=>starts[Math.floor(i*(starts.length-1)/23)]):starts;
+  const powerSum=new Array(half).fill(0);
+  for(const s0 of used){
+    for(let k=1;k<=half;k++){
+      let re=0,im=0;
+      for(let n=0;n<N;n++){const v=(signal[s0+n]||0)*win[n];const a=2*Math.PI*k*n/N;re+=v*Math.cos(a);im-=v*Math.sin(a);}
+      powerSum[k-1]+=Math.sqrt(re*re+im*im)/N;
+    }
+  }
+  const freqs=[],power=[];
+  for(let k=1;k<=half;k++){freqs.push(Math.round(k*fs/N));power.push(powerSum[k-1]/used.length);}
+  const peaks=findResonancePeaks(freqs,power);
+  return{freqs,power,fs,nyquist:fs/2,peaks};
+}
+function bandRMS(freqs,power,lo,hi){
+  let sum=0,c=0;
+  for(let i=0;i<freqs.length;i++) if(freqs[i]>=lo&&freqs[i]<=hi){sum+=power[i]**2;c++;}
+  return c?Math.sqrt(sum/c):0;
+}
+function findResonancePeaks(freqs,power,minHz=80,maxHz=Math.min(600,freqs[freqs.length-1]||600)){
+  const slice=power.filter((_,i)=>freqs[i]>=minHz&&freqs[i]<=maxHz);
+  if(!slice.length) return[];
+  const mean=slice.reduce((a,b)=>a+b,0)/slice.length;
+  const std=Math.sqrt(slice.reduce((a,b)=>a+(b-mean)**2,0)/slice.length)||1;
+  const thr=mean+std*1.8;
+  const peaks=[];
+  for(let i=2;i<freqs.length-2;i++){
+    if(freqs[i]<minHz||freqs[i]>maxHz) continue;
+    if(power[i]>thr&&power[i]>power[i-1]&&power[i]>power[i+1]&&power[i]>power[i-2]&&power[i]>power[i+2])
+      peaks.push({hz:freqs[i],amp:power[i].toFixed(2)});
+  }
+  peaks.sort((a,b)=>b.amp-a.amp);
+  return peaks.slice(0,6);
+}
+function analyzeFilterLog(parsed){
+  const specX=spectrum(parsed.gx,parsed.time);
+  const specY=spectrum(parsed.gy,parsed.time);
+  const specZ=spectrum(parsed.gz,parsed.time);
+  // Average gyro power across roll/pitch/yaw axes (or just use X if Y/Z empty)
+  const nf=specX.freqs.length;
+  const avgPower=specX.freqs.map((_,i)=>{
+    let s=specX.power[i], c=1;
+    if(specY.power[i]!==undefined){s+=specY.power[i];c++;}
+    if(specZ.power[i]!==undefined){s+=specZ.power[i];c++;}
+    return s/c;
+  });
+  // D-term noise estimate: D amplifies high-freq gyro noise ∝ 2πf (derivative in freq domain)
+  // We model D-term noise as power * (f / f_ref) where f_ref = 100 Hz for normalisation
+  const dPower=specX.freqs.map((f,i)=>avgPower[i]*(f/100));
+  const spec={freqs:specX.freqs,power:avgPower,dPower,fs:specX.fs,nyquist:specX.nyquist,peaks:specX.peaks};
+  // Faixas alinhadas ao que a comunidade (Oscar Liang / PIDtoolbox) usa para
+  // interpretar o espectro de gyro: <20Hz é movimento real do drone (ignorado),
+  // 20-100Hz é a janela de propwash/oscilação de PID, 100-250Hz costuma ser
+  // ressonância de frame/peças soltas, e acima de 250Hz é ruído de motor/hélice.
+  const propwash=bandRMS(spec.freqs,spec.power,20,100);
+  const lo=bandRMS(spec.freqs,spec.power,0,100);
+  const mid=bandRMS(spec.freqs,spec.power,100,250);
+  const hi=spec.nyquist>=260?bandRMS(spec.freqs,spec.power,250,600):null;
+  const hi250=spec.nyquist>=260?bandRMS(spec.freqs,spec.power,250,400):null;
+  const hi400=spec.nyquist>=400?bandRMS(spec.freqs,spec.power,400,600):null;
+  return{spec,lo,mid,hi,hi250,hi400,propwash,nyquist:spec.nyquist,peaks:spec.peaks};
+}
+
+// ═══ FREQUÊNCIA × THROTTLE (heatmap) ═══════════════════════════════════════
+// Este é o gráfico mais indicado pela comunidade (Blackbox Explorer e
+// PIDtoolbox) para tuning de filtros: mostra como o ruído do motor sobe de
+// frequência conforme o throttle aumenta (banda diagonal), permitindo achar
+// a frequência mínima real da banda de motor (para RPM filter / dynamic
+// notch) e identificar ressonâncias de frame (linha horizontal constante).
+// Só é útil em logs de "throttle sweep" (rampa de throttle), não em hover puro.
+function computeFreqThrottleHeatmap(signal,thrPct,time,nThrBins=18){
+  if(!thrPct) return null;
+  const N=signal.length;
+  const diffs=[]; for(let i=1;i<Math.min(N,3000);i++){const d=time[i]-time[i-1];if(d>0) diffs.push(d);}
+  diffs.sort((a,b)=>a-b);
+  const dt=diffs.length?diffs[Math.floor(diffs.length/2)]:0.001;
+  const fs=1/dt;
+  const winN=Math.min(256,Math.pow(2,Math.floor(Math.log2(N||1))));
+  if(winN<32) return null;
+  const win=Array.from({length:winN},(_,n)=>0.5-0.5*Math.cos(2*Math.PI*n/(winN-1)));
+  const hop=Math.floor(winN/2), half=winN/2;
+  const thrLo=0, thrHi=100, binW=(thrHi-thrLo)/nThrBins;
+  const grid=Array.from({length:nThrBins},()=>new Array(half).fill(0));
+  const cnt=new Array(nThrBins).fill(0);
+  let usedWindows=0, minThr=100, maxThr=0;
+  for(let s0=0;s0+winN<=N;s0+=hop){
+    let tSum=0,tN=0;
+    for(let k=0;k<winN;k++){const v=thrPct[s0+k]; if(v!==null&&v!==undefined&&!isNaN(v)){tSum+=v;tN++;}}
+    if(!tN) continue;
+    const tAvg=tSum/tN;
+    minThr=Math.min(minThr,tAvg); maxThr=Math.max(maxThr,tAvg);
+    let b=Math.floor((tAvg-thrLo)/binW); b=Math.max(0,Math.min(nThrBins-1,b));
+    for(let k=1;k<=half;k++){
+      let re=0,im=0;
+      for(let n=0;n<winN;n++){const v=(signal[s0+n]||0)*win[n];const a=2*Math.PI*k*n/winN;re+=v*Math.cos(a);im-=v*Math.sin(a);}
+      grid[b][k-1]+=Math.sqrt(re*re+im*im)/winN;
+    }
+    cnt[b]++; usedWindows++;
+  }
+  if(usedWindows<6 || (maxThr-minThr)<20) return null; // não é um throttle sweep útil
+  for(let b=0;b<nThrBins;b++) if(cnt[b]) for(let k=0;k<half;k++) grid[b][k]/=cnt[b];
+  const freqs=[]; for(let k=1;k<=half;k++) freqs.push(k*fs/winN);
+  return{freqs,grid,cnt,nThrBins,binW,fs};
+}
+
+// Estima o atraso (delay) causado pela filtragem comparando o gyro cru
+// (pré-filtro) com o gyro filtrado, por correlação cruzada — mesma ideia do
+// "measure the gap between Gyro and Gyro_Scaled" recomendado no guia da
+// comunidade, só que automatizado.
+function estimateFilterDelayMs(raw,filtered,time){
+  if(!raw||!filtered) return null;
+  const N=Math.min(raw.length,filtered.length,4000);
+  const r=[],f=[]; for(let i=0;i<N;i++){ if(!isNaN(raw[i])&&!isNaN(filtered[i])){r.push(raw[i]);f.push(filtered[i]);} }
+  if(r.length<200) return null;
+  const diffs=[]; for(let i=1;i<Math.min(time.length,3000);i++){const d=time[i]-time[i-1];if(d>0) diffs.push(d);}
+  diffs.sort((a,b)=>a-b);
+  const dt=diffs.length?diffs[Math.floor(diffs.length/2)]:0.001;
+  const maxLag=Math.min(60,Math.floor(0.02/dt)); // busca até ~20ms de atraso
+  let bestLag=0,bestCorr=-Infinity;
+  for(let lag=0;lag<=maxLag;lag++){
+    let sum=0,n=0;
+    for(let i=lag;i<r.length;i++){sum+=r[i-lag]*f[i];n++;}
+    const corr=n?sum/n:0;
+    if(corr>bestCorr){bestCorr=corr;bestLag=lag;}
+  }
+  return bestLag*dt*1000;
+}
+
+function buildFilterCLI(bfVersion,lpHz,lp2Hz){
+  const ver=parseFloat(bfVersion)||4.4;
+  if(ver<=4.2) return[
+    `set gyro_lowpass_hz = ${lpHz}`,`set gyro_lowpass2_hz = ${lp2Hz}`,
+    `set gyro_lowpass_type = PT1`,`set gyro_lowpass2_type = PT1`,
+    `set rpm_filter_harmonics = 3`,`set rpm_filter_q = 500`,
+    `set dyn_notch_range = AUTO`,`set dyn_notch_width_percent = 8`,
+    `set dyn_notch_q = 250`,`set dyn_notch_count = 4`,`save`
+  ].join('\n');
+  if(ver<=4.3) return[
+    `set gyro_lpf1_static_hz = ${lpHz}`,`set gyro_lpf2_static_hz = ${lp2Hz}`,
+    `set gyro_lpf1_type = PT1`,`set gyro_lpf2_type = PT1`,
+    `set dyn_notch_count = 4`,`set dyn_notch_q = 250`,
+    `set dyn_notch_min_hz = 80`,`set dyn_notch_max_hz = 600`,
+    `set rpm_filter_harmonics = 3`,`set rpm_filter_q = 500`,`save`
+  ].join('\n');
+  return[
+    `set gyro_lpf1_static_hz = ${lpHz}`,`set gyro_lpf2_static_hz = ${lp2Hz}`,
+    `set gyro_lpf1_type = PT1`,`set gyro_lpf2_type = PT1`,
+    `set dyn_notch_count = 4`,`set dyn_notch_q = 250`,
+    `set dyn_notch_min_hz = 80`,`set dyn_notch_max_hz = 600`,
+    `set rpm_filter_harmonics = 3`,`set rpm_filter_min_hz = 100`,
+    `set rpm_filter_q = 500`,`save`
+  ].join('\n');
+}
+
+// ═══ STEP RESPONSE (PIDtoolbox-compatible) ════════════════════════════════
+function computeStepResponseCurve(sp,gyro,time,windowMs=500){
+  const N=sp.length; if(N<64) return null;
+  const diffs=[]; for(let i=1;i<Math.min(N,3000);i++){const d=time[i]-time[i-1];if(d>0&&d<0.1) diffs.push(d);}
+  diffs.sort((a,b)=>a-b);
+  const dt=diffs[Math.floor(diffs.length/2)]; if(!dt) return null;
+
+  function fft(re,im){
+    const n=re.length;
+    for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;if(i<j){[re[i],re[j]]=[re[j],re[i]];[im[i],im[j]]=[im[j],im[i]];}}
+    for(let len=2;len<=n;len<<=1){const ang=-2*Math.PI/len,wRe=Math.cos(ang),wIm=Math.sin(ang);
+      for(let i=0;i<n;i+=len){let curR=1,curI=0;for(let j=0;j<len/2;j++){
+        const uR=re[i+j],uI=im[i+j],vR=re[i+j+len/2]*curR-im[i+j+len/2]*curI,vI=re[i+j+len/2]*curI+im[i+j+len/2]*curR;
+        re[i+j]=uR+vR;im[i+j]=uI+vI;re[i+j+len/2]=uR-vR;im[i+j+len/2]=uI-vI;
+        const nr=curR*wRe-curI*wIm;curI=curR*wIm+curI*wRe;curR=nr;}}}
+  }
+
+  const wSamplesA=Math.min(Math.round(windowMs/1000/dt),Math.floor(N*0.4));
+  const spAbs=sp.map(Math.abs).filter(v=>v>0).sort((a,b)=>a-b);
+  const spMax=spAbs.length?spAbs[spAbs.length-1]:0;
+  const spHigh=Math.max(spAbs[Math.floor(spAbs.length*0.90)]||50,spMax*0.20,30);
+  const spLow=spHigh*0.25, restThresh=spHigh*0.5;
+  const edges=[]; let inHigh=false,lastEdge=-wSamplesA;
+  const stableCheck=Math.max(4,Math.floor(wSamplesA*0.30));
+  const preCheck=Math.max(4,Math.floor(wSamplesA*0.10));
+  for(let i=1;i<N-wSamplesA;i++){
+    const prev=Math.abs(sp[i-1]),curr=Math.abs(sp[i]);
+    if(!inHigh&&prev<=spLow&&curr>=spHigh*0.5){
+      let stable=0; for(let k=0;k<stableCheck&&i+k<N;k++) if(Math.abs(sp[i+k])>=spHigh*0.4) stable++;
+      let preSum=0,preN=0; for(let k=Math.max(0,i-preCheck);k<i;k++){preSum+=Math.abs(gyro[k]);preN++;}
+      if(stable/stableCheck>=0.70&&(preN?preSum/preN:0)<=restThresh){
+        inHigh=true; if(i-lastEdge>=wSamplesA){edges.push(i);lastEdge=i;}
+      }
+    } else if(inHigh&&curr<spLow) inHigh=false;
+  }
+
+  if(edges.length>=6){
+    const windows=[];
+    for(const e of edges){
+      if(e+wSamplesA>N) continue;
+      const spLevel=Math.abs(sp[e]); if(spLevel<spHigh*0.3) continue;
+      const win=new Float64Array(wSamplesA);
+      const gyroStart=gyro[e];
+      let steadySum=0,steadyN=0,steadyStart=Math.floor(wSamplesA*0.6);
+      for(let k=steadyStart;k<wSamplesA;k++){steadySum+=gyro[e+k];steadyN++;}
+      const steadyVal=steadyN?steadySum/steadyN:spLevel;
+      const steadyCorrected=steadyVal-gyroStart;
+      const norm=Math.abs(steadyCorrected)>spLevel*0.05?steadyCorrected:spLevel;
+      for(let k=0;k<wSamplesA;k++){
+        const drift=gyroStart+(k/(wSamplesA-1))*(steadyVal-gyroStart-steadyCorrected);
+        win[k]=(gyro[e+k]-drift)/norm*100;
+      }
+      windows.push(win);
+    }
+    if(windows.length>=4){
+      const mean=new Array(wSamplesA).fill(0),std=new Array(wSamplesA).fill(0),tAxis=[];
+      for(let k=0;k<wSamplesA;k++){let s=0;for(const w of windows)s+=w[k];mean[k]=parseFloat((s/windows.length).toFixed(2));}
+      for(let k=0;k<wSamplesA;k++){let v=0;for(const w of windows)v+=(w[k]-mean[k])**2;std[k]=parseFloat(Math.sqrt(v/windows.length).toFixed(2));tAxis.push(parseFloat((k*dt*1000).toFixed(1)));}
+      for(let k=1;k<wSamplesA-1;k++) mean[k]=parseFloat(((mean[k-1]+mean[k]+mean[k+1])/3).toFixed(2));
+      const peak=Math.max(...mean),trough=Math.min(...mean);
+      if(peak<=250&&trough>=-60) return{mean,std,tAxis,edgeCount:windows.length,method:'edge'};
+    }
+  }
+
+  // Wiener fallback
+  const targetSeg=Math.round(1.5/dt); let segN=64;
+  while(segN*2<=Math.min(targetSeg,N)) segN*=2; segN=Math.min(segN,4096);
+  const hop=Math.floor(segN/2),hann=new Float64Array(segN);
+  for(let n=0;n<segN;n++) hann[n]=0.5-0.5*Math.cos(2*Math.PI*n/(segN-1));
+  const pwrSamples=[]; for(let s=0;s+segN<=N;s+=hop){let p=0,mSP=0;for(let k=0;k<segN;k++)mSP+=sp[s+k];mSP/=segN;for(let k=0;k<segN;k++){const v=(sp[s+k]-mSP)*hann[k];p+=v*v;}pwrSamples.push(p);}
+  pwrSamples.sort((a,b)=>a-b);
+  const pwrThresh=pwrSamples.length?pwrSamples[Math.floor(pwrSamples.length*0.20)]:5;
+  const half=segN/2+1,crossRe=new Float64Array(half),crossIm=new Float64Array(half),pxxSum=new Float64Array(half);
+  const segCurves=[]; let nSegs=0;
+  for(let s=0;s+segN<=N;s+=hop){
+    let mSP=0,mGY=0; for(let k=0;k<segN;k++){mSP+=sp[s+k];mGY+=gyro[s+k];} mSP/=segN;mGY/=segN;
+    const spR=new Float64Array(segN),spI=new Float64Array(segN),gyR=new Float64Array(segN),gyI=new Float64Array(segN);
+    let pwr=0; for(let k=0;k<segN;k++){spR[k]=(sp[s+k]-mSP)*hann[k];gyR[k]=(gyro[s+k]-mGY)*hann[k];pwr+=spR[k]*spR[k];}
+    if(pwr<pwrThresh) continue;
+    fft(spR,spI); fft(gyR,gyI);
+    const cRe=new Float64Array(half),cIm=new Float64Array(half),pxx=new Float64Array(half);
+    for(let k=0;k<half;k++){cRe[k]=spR[k]*gyR[k]+spI[k]*gyI[k];cIm[k]=spR[k]*gyI[k]-spI[k]*gyR[k];pxx[k]=spR[k]*spR[k]+spI[k]*spI[k];
+      crossRe[k]+=cRe[k];crossIm[k]+=cIm[k];pxxSum[k]+=pxx[k];}
+    segCurves.push({cRe,cIm,pxx}); nSegs++;
+  }
+  if(nSegs<4) return null;
+
+  function hToStep(cRe,cIm,pxx,nSeg,wLen){
+    const reg=1e-8*(pxx.reduce((a,b)=>a+b,0)/half/nSeg);
+    const hRe=new Float64Array(segN),hIm=new Float64Array(segN);
+    for(let k=0;k<half;k++){const p=pxx[k]/nSeg+reg;hRe[k]=(cRe[k]/nSeg)/p;hIm[k]=(cIm[k]/nSeg)/p;}
+    for(let k=1;k<half-1;k++){hRe[segN-k]=hRe[k];hIm[segN-k]=-hIm[k];}
+    for(let k=0;k<segN;k++) hIm[k]=-hIm[k]; fft(hRe,hIm);
+    for(let k=0;k<segN;k++) hRe[k]/=segN;
+    const step=new Float64Array(wLen); let acc=0;
+    for(let k=0;k<wLen;k++){acc+=hRe[k];step[k]=acc;}
+    const y0=step[0]; for(let k=0;k<wLen;k++) step[k]-=y0;
+    const ss=Math.floor(wLen*0.70); let ssSum=0;
+    for(let k=ss;k<wLen;k++) ssSum+=step[k];
+    const ssVal=ssSum/(wLen-ss); if(Math.abs(ssVal)<1e-12) return null;
+    for(let k=0;k<wLen;k++) step[k]=step[k]/ssVal*100;
+    return step;
+  }
+  const wSamples=Math.min(Math.round(windowMs/1000/dt),segN-1);
+  const stepMean=hToStep(crossRe,crossIm,pxxSum,nSegs,wSamples); if(!stepMean) return null;
+  const mean=[],std=[],tAxis=[];
+  for(let k=0;k<wSamples;k++){mean.push(parseFloat(stepMean[k].toFixed(2)));std.push(0);tAxis.push(parseFloat((k*dt*1000).toFixed(1)));}
+  return{mean,std,tAxis,edgeCount:nSegs,method:'wiener'};
+}
+
+function stepMetrics(mean,tAxis){
+  const target=100, peak=Math.max(...mean);
+  const overshoot=Math.max(0,peak-target).toFixed(1);
+  let t10=-1,t90=-1;
+  for(let i=0;i<mean.length;i++){if(t10<0&&mean[i]>=10)t10=tAxis[i];if(t90<0&&mean[i]>=90)t90=tAxis[i];}
+  const riseTime=t10>=0&&t90>=0?(t90-t10).toFixed(1):'—';
+  let t50='—'; for(let i=0;i<mean.length;i++) if(mean[i]>=50){t50=tAxis[i].toFixed(1);break;}
+  return{overshoot,riseTime,t50};
+}
+
+// ═══ ESTIMATED STEP RESPONSE — canonical 2nd-order fit model ══════════════
+// REPLACES the old "curve-warping" model (which distorted the raw measured
+// samples directly — time-rescaling + an amplitude envelope on the noisy
+// tail — and needed an emergency clamp, ENV_MAX, to stop that noise from
+// being amplified into fake growing oscillations at low D).
+//
+// New approach (two separate steps, so noise from the log never reaches
+// the output curve):
+//   1) FIT the real measured curve (baseMetrics.mean/tAxis) to a canonical
+//      2nd-order step response y(t) = f(zeta, wn), by least-squares over
+//      the WHOLE curve shape (grid search + coordinate-descent refinement),
+//      not just two summary stats (overshoot % and T10–T90) inverted
+//      through a closed-form formula as before. This is cached on
+//      baseMetrics (._fit) so the grid search runs once per log, not once
+//      per slider tick — the suggestion engine calls this in a hot loop.
+//   2) REGENERATE a brand-new, clean analytic curve from (zeta, wn) rescaled
+//      by the slider multipliers — never touching the noisy measured
+//      samples again. wn ∝ sqrt(Kp_mult) (bandwidth), zeta ∝ Kd_mult /
+//      sqrt(Kp_mult) (relative damping) — the classic PD-on-2nd-order-plant
+//      relation. Because the output is always analytic, it can't blow up
+//      the way the old warped-noise approach could.
+//
+// Known limitation (unchanged from before, and inherent to any 2nd-order
+// model): a canonical 2nd-order system structurally cannot reproduce a real
+// "double hump" Betaflight response (overshoot → undershoot → second
+// overshoot from D-filter group delay / iterm-relax / anti-gravity
+// interaction). This remains a plausible *trend* estimate for how OS/rise
+// time move when sliders move — not a firmware re-simulation.
+
+function secondOrderStep(t,zeta,wn){
+  if(zeta<1-1e-9){
+    const wd=wn*Math.sqrt(1-zeta*zeta), phi=Math.acos(zeta);
+    return 1-(Math.exp(-zeta*wn*t)/Math.sqrt(1-zeta*zeta))*Math.sin(wd*t+phi);
+  } else if(zeta>1+1e-9){
+    const s=Math.sqrt(zeta*zeta-1);
+    return 1-Math.exp(-zeta*wn*t)*(Math.cosh(wn*s*t)+(zeta/s)*Math.sinh(wn*s*t));
+  } else {
+    return 1-Math.exp(-wn*t)*(1+wn*t);
+  }
+}
+function generateSecondOrderCurve(zeta,wn,dt,n){
+  const out=new Array(n);
+  for(let i=0;i<n;i++) out[i]=secondOrderStep(i*dt,zeta,wn);
+  return out;
+}
+// Fits (zeta,wn) to a measured 0..1-normalised step response by minimising
+// summed squared error over every sample — grid search then local refine.
+function fitSecondOrder(resp01,dt){
+  const n=resp01.length;
+  function sse(zeta,wn){
+    let s=0; for(let i=0;i<n;i++){const d=secondOrderStep(i*dt,zeta,wn)-resp01[i];s+=d*d;} return s;
+  }
+  let best={zeta:0.7,wn:40,err:Infinity};
+  for(let z=0.25;z<=2.2;z+=0.05){
+    for(let w=8;w<=180;w+=4){
+      const e=sse(z,w);
+      if(e<best.err) best={zeta:z,wn:w,err:e};
+    }
+  }
+  let stepZ=0.02, stepW=2;
+  for(let iter=0;iter<25;iter++){
+    let improved=false;
+    for(let dz=-1;dz<=1;dz++){
+      for(let dw=-1;dw<=1;dw++){
+        if(dz===0&&dw===0) continue;
+        const z=Math.max(0.15,best.zeta+dz*stepZ), w=Math.max(4,best.wn+dw*stepW);
+        const e=sse(z,w);
+        if(e<best.err){best={zeta:z,wn:w,err:e};improved=true;}
+      }
+    }
+    if(!improved){stepZ*=0.5;stepW*=0.5;if(stepZ<0.0005) break;}
+  }
+  return{zeta:best.zeta,wn:best.wn,sse:best.err};
+}
+// Returns (and caches on baseMetrics) the {zeta,wn,r2,rmsePct} fit for the
+// measured curve. Falls back to a generic reasonable-quad default
+// (zeta=0.7,wn=40, no quality score) only when no real curve was captured
+// at all — a single unified model, unlike the old dual-path (curve-warp vs.
+// Euler-integrated synthetic) setup that could silently switch behaviour
+// depending on app state.
+//
+// r2 / rmsePct quantify how well a canonical 2nd-order system actually
+// explains the measured curve. This matters because the fit quality is NOT
+// uniform across flights: a well-damped, close-to-default tune tends to
+// produce a clean single-overshoot response that a 2nd-order model nails;
+// an aggressively modified tune is more likely to show a real "double hump"
+// (D-filter group delay / iterm-relax / anti-gravity interaction) that a
+// 2nd-order model structurally cannot reproduce — the fit still returns
+// *something*, but it's a worse approximation, silently, unless surfaced.
+function getOrFitBase(baseMetrics){
+  if(baseMetrics && baseMetrics._fit) return baseMetrics._fit;
+  if(!baseMetrics || !Array.isArray(baseMetrics.mean) || baseMetrics.mean.length<10){
+    return {zeta:0.7, wn:40, default:true, r2:null, rmsePct:null};
+  }
+  const dtMs=(baseMetrics.tAxis[1]-baseMetrics.tAxis[0])||1;
+  const dtFit=dtMs/1000;
+  const resp01=baseMetrics.mean.map(v=>v/100);
+  const fitRaw=fitSecondOrder(resp01,dtFit);
+  const n=resp01.length;
+  const meanResp=resp01.reduce((a,b)=>a+b,0)/n;
+  let sst=0; for(let i=0;i<n;i++) sst+=(resp01[i]-meanResp)**2;
+  const r2=sst>1e-9 ? Math.max(0, 1-fitRaw.sse/sst) : null;
+  const rmsePct=Math.sqrt(fitRaw.sse/n)*100; // RMSE expressed in response-% units
+  const fit={zeta:fitRaw.zeta, wn:fitRaw.wn, r2, rmsePct};
+  baseMetrics._fit=fit;
+  return fit;
+}
+
+// Linearly resamples a measured curve (mean/tAxis, arbitrary spacing) onto
+// a new time axis — used to overlay the real measured curve on top of the
+// estimated curve's fixed 1ms grid so they can be visually compared.
+function resampleToAxis(mean,tAxis,newTAxis){
+  const n=tAxis.length;
+  function interp(tMs){
+    if(tMs<=tAxis[0]) return mean[0];
+    if(tMs>=tAxis[n-1]) return mean[n-1];
+    let lo=0,hi=n-1;
+    while(hi-lo>1){const mid=(lo+hi)>>1; if(tAxis[mid]<=tMs) lo=mid; else hi=mid;}
+    const t0=tAxis[lo],t1=tAxis[hi],y0=mean[lo],y1=mean[hi];
+    const f=(t1>t0)?(tMs-t0)/(t1-t0):0;
+    return y0+(y1-y0)*f;
+  }
+  return newTAxis.map(t=>parseFloat(interp(t).toFixed(2)));
+}
+function estimateStepCurve(Kp_mult,Kd_mult,baseMetrics,Ki_mult){
+  const fit=getOrFitBase(baseMetrics);
+  const kpM=Math.max(Kp_mult,0.01), kdM=Math.max(Kd_mult,0);
+  let wn=fit.wn*Math.sqrt(kpM);
+  let zeta=fit.zeta*(kdM/Math.sqrt(kpM));
+  zeta=Math.max(0.15,Math.min(zeta,3.0));
+  wn=Math.max(3,Math.min(wn,400));
+
+  const dt=0.001, N=500; // fixed 1ms grid, 500ms window — matches chart contract
+  const tAxis=Array.from({length:N},(_,i)=>parseFloat((i*dt*1000).toFixed(1)));
+
+  // Analytic 2nd-order curve at the CURRENT sliders (target shape)...
+  const targetRaw=generateSecondOrderCurve(zeta,wn,dt,N).map(v=>v*100);
+  // ...and the SAME analytic model evaluated at the fit's own (zeta,wn), i.e.
+  // exactly what Kp_mult=1/Kd_mult=1 would produce. This is the model's
+  // "no change" baseline.
+  const baseRaw=generateSecondOrderCurve(fit.zeta,fit.wn,dt,N).map(v=>v*100);
+
+  // Real measured curve (resampled onto this 1ms/500-sample grid). We build
+  // the estimate as measured + (target-model − base-model), so that when the
+  // sliders imply no change (target-model === base-model, e.g. Kp_mult=1 &
+  // Kd_mult=1), the estimate is IDENTICAL to the real measured curve, sample
+  // for sample — not just visually close to it. As the sliders move away
+  // from 1, only the analytic delta between the two models is layered on
+  // top of the real curve, so the estimate keeps tracking the real flight's
+  // actual shape/noise-free trend instead of being replaced by a synthetic
+  // curve.
+  const hasMeasured=baseMetrics && Array.isArray(baseMetrics.mean) && baseMetrics.mean.length>=10;
+  const measured=hasMeasured ? resampleToAxis(baseMetrics.mean,baseMetrics.tAxis,tAxis) : baseRaw;
+  const curve=measured.map((v,i)=>parseFloat((v+(targetRaw[i]-baseRaw[i])).toFixed(2)));
+
+  // Low-I steady-state sag — a genuinely separate effect from P/D shape,
+  // not present in the 2nd-order fit's own I setting.
+  if(Ki_mult!==undefined && Ki_mult<0.25){
+    const sag=(0.25-Ki_mult)*8;
+    for(let i=200;i<N;i++) curve[i]-=sag*(1-Math.exp(-(i-200)/80));
+  }
+
+  return {curve, tAxis, met:stepMetrics(curve, tAxis)};
+}
+
+// ═══ CHARTS ════════════════════════════════════════════════════════════════
+const CD={responsive:true,maintainAspectRatio:false,animation:{duration:300},
+  plugins:{legend:{labels:{color:'#a7adba',font:{size:10}}}},
+  scales:{x:{ticks:{color:'#848b9b',maxTicksLimit:10},grid:{color:'rgba(79,216,196,.14)'}},y:{ticks:{color:'#848b9b'},grid:{color:'rgba(79,216,196,.14)'}}}};
+function deepMerge(target,source){
+  for(const k of Object.keys(source||{})){
+    if(source[k]&&typeof source[k]==='object'&&!Array.isArray(source[k])){
+      if(!target[k]||typeof target[k]!=='object') target[k]={};
+      deepMerge(target[k],source[k]);
+    } else { target[k]=source[k]; }
+  }
+  return target;
+}
+function mkChart(id,cfg){
+  if(charts[id]) charts[id].destroy();
+  const opts=JSON.parse(JSON.stringify(CD));
+  if(cfg.options) deepMerge(opts,cfg.options);
+  const canvas=document.getElementById(id);
+  if(!canvas) return;
+  charts[id]=new Chart(canvas.getContext('2d'),{type:cfg.type,data:cfg.data,options:opts});
+}
+function cc(v,g,w){return v<=g?'vg':v<=w?'vw':'vb';}
+
+// ═══ RELATIVE MULTIPLIER FIX ════════════════════════════════════════════════
+// estimateStepCurve() assumes Kp_mult=1 / Kd_mult=1 reproduces EXACTLY the
+// measured curve (baseMetrics). That is only true if the multiplier passed in
+// represents "no change from the gains active when the log was recorded".
+// Bug: callers were passing the ABSOLUTE slider values (dGains*master, etc.)
+// straight into the model. That only happens to equal 1.0 when the BBL was
+// recorded with neutral sliders (D=1.00, P=1.00, Master=1.00). For any log
+// recorded with non-neutral simplified sliders (e.g. D=1.40, Master=1.15 —
+// common after a previous tuning pass), the model silently assumed a large
+// change had already been made relative to the curve, producing wildly
+// inconsistent suggestions between logs depending on what sliders happened
+// to be baked into that particular recording.
+// Fix: always normalize against S.originalSliders (the sliders read from the
+// .bbl/.bfl header of the log actually being analysed), so mult=1 correctly
+// means "same gains as during the recorded flight".
+function relMult(d,p,master,prd,prp){
+  const base=S.originalSliders||{dGains:1,piGains:1,master:1,pitchRollD:1,pitchRollPI:1};
+  const baseKp=(base.piGains||1)*(base.master||1);
+  const baseKd=(base.dGains||1)*(base.master||1);
+  const baseKpP=baseKp*(base.pitchRollPI||1);
+  const baseKdP=baseKd*(base.pitchRollD||1);
+  const newKp=p*master, newKd=d*master;
+  const newKpP=newKp*prp, newKdP=newKd*prd;
+  return{
+    kpR:newKp/(baseKp||1), kdR:newKd/(baseKd||1),
+    kpP:newKpP/(baseKpP||1), kdP:newKdP/(baseKdP||1)
+  };
+}
+
+// ═══ NAV ═══════════════════════════════════════════════════════════════════
+function buildNav(){
+  document.getElementById('nav').innerHTML=[
+    {n:1,l:'1 · Drone'},{n:2,l:'2 · Filtros'},{n:3,l:'3 · Step P-D'},{n:4,l:'4 · Feed Forward'}
+  ].map(t=>`<button class="tab" id="nt${t.n}" onclick="go(${t.n})">${t.l}</button>`).join('');
+}
+function go(n){
+  document.querySelectorAll('.step').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
+  document.getElementById('s'+n)?.classList.add('active');
+  document.getElementById('nt'+n)?.classList.add('active');
+}
+
+// ═══ LAYER 1 ═══════════════════════════════════════════════════════════════
+const DRONE_STORAGE_KEY='fpvPidTuner_drone_v1';       // legacy single-drone key (migrated on load)
+const DRONES_STORAGE_KEY='fpvPidTuner_drones_v1';     // {drones:[...], activeDroneId}
+
+function uid(){return 'd_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function blankDrone(frame){return{id:uid(),frame:frame||'',propSize:'5',motor:'',bfVersion:'4.5',kv:'',cells:''};}
+
+function renderDroneSummary(){
+  const el=document.getElementById('drone-summary');
+  if(!el) return;
+  el.innerHTML='';
+}
+
+// Fills the Camada 1 form inputs from S.drone (the currently active drone).
+function fillDroneForm(){
+  const setVal=(id,val)=>{const el=document.getElementById(id); if(el) el.value=(val===undefined||val===null)?'':val;};
+  setVal('d-frame', S.drone.frame);
+  setVal('d-prop', S.drone.propSize||'5');
+  setVal('d-motor', S.drone.motor);
+  setVal('d-bf', S.drone.bfVersion||'4.5');
+  setVal('d-kv', S.drone.kv);
+  setVal('d-cells', S.drone.cells);
+}
+
+// Rebuilds the <option> list of the drone selector, matching S.activeDroneId.
+function renderDroneSelector(){
+  const sel=document.getElementById('d-selector');
+  if(!sel) return;
+  sel.innerHTML=S.drones.map(d=>{
+    const label=d.frame && d.frame.trim() ? d.frame.trim() : `Drone sem nome (${d.propSize||'5'}")`;
+    return `<option value="${d.id}"${d.id===S.activeDroneId?' selected':''}>${label}</option>`;
+  }).join('');
+  const delBtn=document.getElementById('d-delete-btn');
+  if(delBtn) delBtn.disabled = S.drones.length<=1;
+}
+
+function saveDronesToStorage(){
+  try{
+    localStorage.setItem(DRONES_STORAGE_KEY, JSON.stringify({drones:S.drones, activeDroneId:S.activeDroneId}));
+  }catch(e){
+    console.warn('Não foi possível salvar a lista de drones localmente:', e);
+  }
+}
+
+// Switches the active drone: mirrors its data into S.drone, refreshes the form/selector/summary.
+function setActiveDrone(id){
+  const found=S.drones.find(d=>d.id===id);
+  if(!found) return;
+  S.activeDroneId=id;
+  Object.assign(S.drone, found);
+  fillDroneForm();
+  renderDroneSelector();
+  renderDroneSummary();
+  saveDronesToStorage();
+}
+function onDroneSelectorChange(sel){
+  setActiveDrone(sel.value);
+}
+
+// Adds a brand-new blank drone entry and makes it the active one.
+function addDrone(){
+  const d=blankDrone('');
+  S.drones.push(d);
+  setActiveDrone(d.id);
+  const frameInput=document.getElementById('d-frame');
+  if(frameInput) frameInput.focus();
+}
+
+// Deletes the currently active drone (after confirmation). Keeps at least one drone registered.
+function deleteDrone(){
+  if(S.drones.length<=1){
+    alert('Não é possível excluir: é preciso manter ao menos um drone cadastrado.');
+    return;
+  }
+  const current=S.drones.find(d=>d.id===S.activeDroneId);
+  const label=current && current.frame ? current.frame : 'este drone';
+  if(!confirm(`Excluir "${label}"? Esta ação não pode ser desfeita.`)) return;
+  S.drones=S.drones.filter(d=>d.id!==S.activeDroneId);
+  setActiveDrone(S.drones[0].id);
+}
+
+function saveDrone(){
+  S.drone.frame=document.getElementById('d-frame').value.trim();
+  S.drone.propSize=document.getElementById('d-prop').value;
+  S.drone.motor=document.getElementById('d-motor').value.trim();
+  S.drone.bfVersion=document.getElementById('d-bf').value;
+  S.drone.kv=document.getElementById('d-kv').value.trim();
+  S.drone.cells=document.getElementById('d-cells').value;
+  const entry=S.drones.find(d=>d.id===S.activeDroneId);
+  if(entry) Object.assign(entry, S.drone);
+  saveDronesToStorage();
+  renderDroneSelector();
+  renderDroneSummary();
+}
+
+// Restores drones saved in a previous session (survives fechar/reabrir o arquivo).
+// Migrates the old single-drone format (DRONE_STORAGE_KEY) into the new list format if needed.
+function loadDroneFromStorage(){
+  let data=null;
+  try{
+    const raw=localStorage.getItem(DRONES_STORAGE_KEY);
+    if(raw) data=JSON.parse(raw);
+  }catch(e){
+    console.warn('Não foi possível ler a lista salva de drones:', e);
+  }
+  if(data && Array.isArray(data.drones) && data.drones.length){
+    S.drones=data.drones.map(d=>({...blankDrone(''), ...d, id:d.id||uid()}));
+    S.activeDroneId=data.activeDroneId && S.drones.some(d=>d.id===data.activeDroneId)
+      ? data.activeDroneId : S.drones[0].id;
+  }else{
+    // Try migrating the legacy single-drone entry.
+    let legacy=null;
+    try{
+      const raw=localStorage.getItem(DRONE_STORAGE_KEY);
+      if(raw) legacy=JSON.parse(raw);
+    }catch(e){ /* ignore */ }
+    const migrated=legacy ? {...blankDrone(''), ...legacy, id:uid()} : blankDrone('');
+    S.drones=[migrated];
+    S.activeDroneId=migrated.id;
+  }
+  Object.assign(S.drone, S.drones.find(d=>d.id===S.activeDroneId));
+  fillDroneForm();
+  renderDroneSelector();
+  renderDroneSummary();
+  saveDronesToStorage();
+}
+
+// ═══ LAYER 2 — FILTERS ═════════════════════════════════════════════════════
+async function loadHoverBefore(input){
+  if(!input.files.length) return;
+  const file=input.files[0];
+  try{
+    S.hoverBefore=await parseHoverFile(file);
+    S.filterBefore=analyzeFilterLog(S.hoverBefore);
+    S.filterBefore.heatmap=computeFreqThrottleHeatmap(S.hoverBefore.gx,S.hoverBefore.thrPct,S.hoverBefore.time);
+    S.filterBefore.delayMs=estimateFilterDelayMs(S.hoverBefore.gxRaw,S.hoverBefore.gx,S.hoverBefore.time);
+    document.getElementById('hover-before-name').textContent='✅ '+file.name;
+    document.getElementById('btn-filter1').disabled=false;
+  }catch(e){alert('Erro: '+e.message);}
+  input.value='';
+}
+async function loadHoverAfter(input){
+  if(!input.files.length) return;
+  const file=input.files[0];
+  try{
+    S.hoverAfter=await parseHoverFile(file);
+    S.filterAfter=analyzeFilterLog(S.hoverAfter);
+    S.filterAfter.heatmap=computeFreqThrottleHeatmap(S.hoverAfter.gx,S.hoverAfter.thrPct,S.hoverAfter.time);
+    S.filterAfter.delayMs=estimateFilterDelayMs(S.hoverAfter.gxRaw,S.hoverAfter.gx,S.hoverAfter.time);
+    document.getElementById('hover-after-name').textContent='✅ '+file.name;
+    document.getElementById('btn-filter2').disabled=false;
+  }catch(e){alert('Erro: '+e.message);}
+  input.value='';
+}
+function getBfVersion(){
+  return document.getElementById('d-bf')?.value || S.drone.bfVersion || '4.5';
+}
+function analisarFiltros(){
+  if(!S.filterBefore) return;
+  S.drone.bfVersion=getBfVersion();
+  const a=S.filterBefore;
+  const lpHz=Math.max(60,Math.round(100-a.mid*3));
+  const lp2Hz=Math.max(150,Math.round(250-a.mid*5));
+  const cli=buildFilterCLI(getBfVersion(),lpHz,lp2Hz);
+  document.getElementById('cli-filters').textContent=cli;
+  const peakTxt=a.peaks.length?a.peaks.map(p=>`${p.hz} Hz`).join(', '):'nenhum pico forte detectado';
+  const delayTxt=a.delayMs!==null?`≈ <strong>${a.delayMs.toFixed(1)} ms</strong>`:'N/D (precisa de debug_mode=GYRO_SCALED no log)';
+  document.getElementById('filter-report').innerHTML=`
+    <div class="g3">
+      <div class="mbox"><div class="mlbl">Propwash 20–100 Hz</div><div class="mval ${cc(a.propwash,2,4)}">${a.propwash.toFixed(2)}</div></div>
+      <div class="mbox"><div class="mlbl">Ressonância 100–250 Hz</div><div class="mval ${cc(a.mid,3,6)}">${a.mid.toFixed(2)}</div></div>
+      <div class="mbox"><div class="mlbl">Ruído motor &gt;250 Hz</div><div class="mval">${a.hi!==null?a.hi.toFixed(2):'N/D'}</div></div>
+    </div>
+    <div class="al al-i" style="margin-top:12px">
+      Nyquist ≈ <strong>${a.nyquist.toFixed(0)} Hz</strong> · Ressonâncias detectadas: <strong>${peakTxt}</strong><br>
+      Atraso de filtragem (gyro cru vs. filtrado): ${delayTxt}<br>
+      LPF1 sugerido: <strong>${lpHz} Hz</strong> · LPF2: <strong>${lp2Hz} Hz</strong> (BF ${getBfVersion()})
+    </div>
+    <div class="al al-w" style="margin-top:10px;font-size:.76rem">
+      <strong>Como ler:</strong> abaixo de 20 Hz é movimento real do drone (ignore). 20–100 Hz é a janela de propwash/oscilação de PID — quanto menos atividade aqui, melhor. 100–250 Hz costuma ser ressonância de frame/peça solta. Acima de 250 Hz é ruído de motor/hélice — é aqui que RPM filter e dynamic notch atuam. Filtrar demais abaixo de 100 Hz tende a piorar as coisas (adiciona atraso), então evite.
+    </div>
+    <div class="g2" style="margin-top:14px">
+      <div><div class="ctop">📊 Ruído Gyro — Espectro de frequência (dB)</div><div class="cbox" style="height:200px"><canvas id="chartGyro1"></canvas></div></div>
+      <div><div class="ctop">📊 Ruído D-term estimado (dB)</div><div class="cbox" style="height:200px"><canvas id="chartDterm1"></canvas></div></div>
+    </div>`;
+  document.getElementById('result-filters').style.display='block';
+  // Build spectrum charts — trim to ≤600 Hz and max 120 points for performance
+  renderSpectrumChart('chartGyro1', a.spec.freqs, a.spec.power, lpHz, lp2Hz,
+    [{label:'Gyro (baseline)', color:'#4f9dff'}], null);
+  renderSpectrumChart('chartDterm1', a.spec.freqs, a.spec.dPower, lpHz, lp2Hz,
+    [{label:'D-term estimado (baseline)', color:'#ff6b5c'}], null);
+  // Nota: o heatmap Frequência×Throttle continua sendo calculado (a.heatmap,
+  // via computeFreqThrottleHeatmap) para uso futuro no cálculo do filtro —
+  // só a renderização visual foi retirada deste layout a pedido do usuário.
+}
+// ── Shared spectrum chart renderer ──────────────────────────────────────────
+// Eixo Y em dB (20·log10), como PIDtoolbox e Blackbox Explorer costumam
+// mostrar — comprime a escala e deixa picos/ressonâncias muito mais visíveis
+// que amplitude linear. Não é calibrado às mesmas unidades de dB do
+// PIDtoolbox (que usa deg/s cru), então tratamos como escala relativa: o que
+// importa é a FORMA (piso de ruído baixo e plano em alta frequência é bom).
+// datasets: [{label, color, data}] — if data is null, uses the passed power array
+// lpAnnot: draws two vertical dashed lines at LPF1 and LPF2 if provided
+const DB_FLOOR=-60;
+function toDb(v){ if(!(v>0)) return DB_FLOOR; return Math.max(DB_FLOOR,20*Math.log10(v)); }
+function renderSpectrumChart(canvasId, freqs, power, lpHz, lp2Hz, datasets, extraDatasets){
+  const MAX_HZ=600, MAX_PTS=180;
+  // Sub-sample for display
+  const step=Math.max(1,Math.floor(freqs.filter(f=>f<=MAX_HZ).length/MAX_PTS));
+  const labels=[], mainData=[];
+  for(let i=0;i<freqs.length;i+=step){
+    if(freqs[i]>MAX_HZ) break;
+    labels.push(freqs[i]);
+    mainData.push(parseFloat(toDb(power[i]||0).toFixed(2)));
+  }
+  const ds=[{
+    label:datasets[0].label,
+    data:mainData,
+    borderColor:datasets[0].color,
+    backgroundColor:datasets[0].color+'22',
+    fill:true,
+    pointRadius:0,
+    tension:0.3,
+    borderWidth:2
+  }];
+  if(extraDatasets) for(const ed of extraDatasets){
+    const ed2=[]; for(let i=0;i<freqs.length;i+=step){if(freqs[i]>MAX_HZ)break;ed2.push(parseFloat(toDb(ed.data[i]||0).toFixed(2)));}
+    ds.push({label:ed.label,data:ed2,borderColor:ed.color,backgroundColor:ed.color+'22',fill:true,pointRadius:0,tension:0.3,borderWidth:2});
+  }
+  const annotations={};
+  if(lpHz){annotations.lpf1={type:'line',xMin:lpHz,xMax:lpHz,borderColor:'#ffb84d',borderWidth:2,borderDash:[5,4],label:{content:'LPF1 '+lpHz+'Hz',display:true,position:'start',backgroundColor:'rgba(20,23,28,.85)',color:'#ffb84d',font:{size:10}}};}
+  if(lp2Hz){annotations.lpf2={type:'line',xMin:lp2Hz,xMax:lp2Hz,borderColor:'#9b8cff',borderWidth:2,borderDash:[5,4],label:{content:'LPF2 '+lp2Hz+'Hz',display:true,position:'start',backgroundColor:'rgba(20,23,28,.85)',color:'#9b8cff',font:{size:10}}};}
+  const opts={
+    scales:{
+      x:{type:'linear',title:{display:true,text:'Frequência (Hz)'},ticks:{color:'#848b9b',maxTicksLimit:12},grid:{color:'rgba(79,216,196,.14)'}},
+      y:{title:{display:true,text:'Amplitude (dB, relativo)'},ticks:{color:'#848b9b'},grid:{color:'rgba(79,216,196,.14)'}}
+    },
+    plugins:{legend:{labels:{color:'#a7adba',font:{size:10}}},annotation:{annotations}}
+  };
+  mkChart(canvasId,{type:'line',data:{labels,datasets:ds},options:opts});
+}
+
+// ── Heatmap Frequência × Throttle ───────────────────────────────────────────
+// Renderizado em canvas puro (não Chart.js) — cada coluna é um bin de
+// throttle, cada linha um bin de frequência, cor = intensidade de ruído.
+// Esse é o gráfico "Freq x Throttle" que Blackbox Explorer e PIDtoolbox usam
+// como referência para achar a banda de ruído do motor (linha diagonal) e
+// ressonâncias de frame (linha horizontal), conforme o guia da comunidade.
+function heatColor(t){ // t in [0,1] -> cor tipo "viridis" simplificada
+  t=Math.max(0,Math.min(1,t));
+  const stops=[[13,17,23],[41,84,145],[46,163,150],[190,214,74],[255,184,77],[255,90,70]];
+  const seg=t*(stops.length-1); const i=Math.min(stops.length-2,Math.floor(seg)); const f=seg-i;
+  const a=stops[i], b=stops[i+1];
+  const r=Math.round(a[0]+(b[0]-a[0])*f), g=Math.round(a[1]+(b[1]-a[1])*f), bl=Math.round(a[2]+(b[2]-a[2])*f);
+  return `rgb(${r},${g},${bl})`;
+}
+function renderHeatmap(containerId, hm, maxHz){
+  const el=document.getElementById(containerId);
+  if(!el) return;
+  if(!hm){ el.innerHTML='<div class="al al-w" style="margin:0">Sem dados de throttle variável suficientes neste log — grave um <strong>throttle sweep</strong> (suba o throttle de 0% a 100% em 5–10s, 2–3 vezes) para ver este gráfico. Hover parado não mostra a banda de ruído do motor.</div>'; return; }
+  maxHz=maxHz||600;
+  const W=el.clientWidth||600, H=280, padL=42, padB=26, padT=6, padR=10;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const freqIdxMax=hm.freqs.filter(f=>f<=maxHz).length;
+  // Amplitude global para normalizar cor (percentil 98 para não estourar por outlier)
+  let all=[]; for(let b=0;b<hm.nThrBins;b++) for(let k=0;k<freqIdxMax;k++) if(hm.cnt[b]) all.push(hm.grid[b][k]);
+  all.sort((a,b)=>a-b);
+  const vmax=all.length?all[Math.floor(all.length*0.98)]||all[all.length-1]:1;
+  const vmin=0;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px;display:block">`;
+  const colW=plotW/freqIdxMax, rowH=plotH/hm.nThrBins;
+  for(let b=0;b<hm.nThrBins;b++){
+    if(!hm.cnt[b]) continue;
+    const y=padT+plotH-(b+1)*rowH;
+    for(let k=0;k<freqIdxMax;k++){
+      const v=hm.grid[b][k];
+      const t=vmax>vmin?(v-vmin)/(vmax-vmin):0;
+      const x=padL+k*colW;
+      svg+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(colW+0.6).toFixed(1)}" height="${(rowH+0.6).toFixed(1)}" fill="${heatColor(Math.sqrt(t))}"/>`;
+    }
+  }
+  // Eixos
+  for(let hz=0;hz<=maxHz;hz+=100){
+    const k=hz/(maxHz/freqIdxMax*1); const x=padL+(hz/maxHz)*plotW;
+    svg+=`<line x1="${x.toFixed(1)}" y1="${padT}" x2="${x.toFixed(1)}" y2="${padT+plotH}" stroke="rgba(255,255,255,.06)"/>`;
+    svg+=`<text x="${x.toFixed(1)}" y="${H-8}" fill="#848b9b" font-size="10" text-anchor="middle" font-family="var(--mono)">${hz}</text>`;
+  }
+  for(let p=0;p<=100;p+=25){
+    const y=padT+plotH-(p/100)*plotH;
+    svg+=`<text x="${padL-6}" y="${(y+3).toFixed(1)}" fill="#848b9b" font-size="10" text-anchor="end" font-family="var(--mono)">${p}%</text>`;
+  }
+  svg+=`<text x="${padL+plotW/2}" y="${H-1}" fill="#a7adba" font-size="9" text-anchor="middle">Frequência (Hz)</text>`;
+  svg+=`<text x="10" y="${padT+8}" fill="#a7adba" font-size="9" text-anchor="start">Throttle</text>`;
+  svg+='</svg>';
+  el.innerHTML=svg;
+}
+function compararFiltros(){
+  if(!S.filterAfter){alert('Carregue o log de hover pós-filtros.');return;}
+  const b=S.filterBefore, a=S.filterAfter;
+  const lpHz=Math.max(60,Math.round(100-b.mid*3));
+  const lp2Hz=Math.max(150,Math.round(250-b.mid*5));
+  const pct=(before,after)=>before>0?Math.round((1-after/before)*100):null;
+  const hiRed=b.hi&&a.hi?pct(b.hi,a.hi):null;
+  const midRed=pct(b.mid,a.mid);
+  const loRed=pct(b.lo,a.lo);
+  const pwRed=pct(b.propwash,a.propwash);
+  let html=`<div class="al ${hiRed!==null&&hiRed>=15?'al-s':hiRed!==null&&hiRed>=5?'al-w':'al-r'}">`;
+  if(hiRed!==null) html+=`Ruído motor (&gt;250 Hz): <strong>${hiRed>0?'−':'+'}${Math.abs(hiRed)}%</strong> · `;
+  html+=`Ressonância (100–250 Hz): <strong>${midRed>0?'−':'+'}${Math.abs(midRed)}%</strong> · Propwash (20–100 Hz): <strong>${pwRed>0?'−':'+'}${Math.abs(pwRed)}%</strong></div>`;
+  if(b.delayMs!==null&&a.delayMs!==null){
+    const dDelay=a.delayMs-b.delayMs;
+    html+=`<div class="al al-i" style="margin-top:8px">Atraso de filtragem: <strong>${b.delayMs.toFixed(1)} ms</strong> → <strong>${a.delayMs.toFixed(1)} ms</strong> (${dDelay<=0?'−':'+'}${Math.abs(dDelay).toFixed(1)} ms). Menos atraso = quad mais responsivo e menos propwash, desde que o ruído de motor continue controlado acima.</div>`;
+  }
+  html+=`<table style="margin-top:10px"><thead><tr><th>Faixa</th><th>Antes</th><th>Depois</th><th>Δ</th></tr></thead><tbody>`;
+  const rows=[
+    ['20–100 Hz (propwash)',b.propwash,a.propwash],['100–250 Hz (ressonância)',b.mid,a.mid],
+    ['250–400 Hz (motor)',b.hi250,a.hi250],['400–600 Hz (motor)',b.hi400,a.hi400]
+  ];
+  for(const [lbl,vb,va] of rows){
+    if(vb==null&&va==null) continue;
+    const d=vb&&va?((1-va/vb)*100).toFixed(0)+'%':'—';
+    html+=`<tr><td>${lbl}</td><td class="tnum">${vb?.toFixed(2)??'—'}</td><td class="tnum">${va?.toFixed(2)??'—'}</td><td class="tnum">${d}</td></tr>`;
+  }
+  html+='</tbody></table><div style="margin-top:12px"><strong>Ressonâncias antes:</strong> '+
+    (b.peaks.length?b.peaks.map(p=>p.hz+' Hz').join(', '):'—')+
+    '<br><strong>Ressonâncias depois:</strong> '+
+    (a.peaks.length?a.peaks.map(p=>p.hz+' Hz').join(', '):'—')+'</div>';
+  // Comparison charts
+  html+=`<div class="g2" style="margin-top:16px">
+    <div><div class="ctop">📊 Ruído Gyro — Sem filtro vs Com filtro (dB)</div><div class="cbox" style="height:200px"><canvas id="chartGyroCmp"></canvas></div></div>
+    <div><div class="ctop">📊 Ruído D-term — Sem filtro vs Com filtro (dB)</div><div class="cbox" style="height:200px"><canvas id="chartDtermCmp"></canvas></div></div>
+  </div>`;
+  document.getElementById('filter-compare').innerHTML=html;
+  document.getElementById('result-compare').style.display='block';
+  // Render comparison charts — align freqs (use before as reference, interpolate after if needed)
+  renderSpectrumChart('chartGyroCmp', b.spec.freqs, b.spec.power, lpHz, lp2Hz,
+    [{label:'Gyro sem filtro', color:'#ff6b5c'}],
+    [{label:'Gyro com filtro', color:'#4fd8c4', data: alignSpectrum(b.spec.freqs, a.spec.freqs, a.spec.power)}]);
+  renderSpectrumChart('chartDtermCmp', b.spec.freqs, b.spec.dPower, lpHz, lp2Hz,
+    [{label:'D-term sem filtro', color:'#ff6b5c'}],
+    [{label:'D-term com filtro', color:'#4fd8c4', data: alignSpectrum(b.spec.freqs, a.spec.freqs, a.spec.dPower)}]);
+  // Nota: os heatmaps antes/depois (b.heatmap / a.heatmap) continuam sendo
+  // calculados normalmente — só a renderização visual foi retirada daqui.
+}
+// Interpolate spectrum B onto freq grid of A (nearest-neighbour)
+function alignSpectrum(freqRef, freqSrc, powerSrc){
+  return freqRef.map(f=>{
+    let best=0, bestD=Infinity;
+    for(let i=0;i<freqSrc.length;i++){const d=Math.abs(freqSrc[i]-f);if(d<bestD){bestD=d;best=i;}}
+    return powerSrc[best]||0;
+  });
+}
+function copyCLI(id,btn){
+  const t=document.getElementById(id)?.textContent;
+  if(!t) return;
+  navigator.clipboard.writeText(t).then(()=>{btn.textContent='✅ Copiado!';setTimeout(()=>btn.textContent='📋 Copiar',1500);});
+}
+
+// ═══ LAYER 3 — STEP RESPONSE ═══════════════════════════════════════════════
+async function addStepLog(input){
+  if(!input.files.length) return;
+  if(S.stepLogs.length>=5){alert('Máximo 5 logs.');input.value='';return;}
+  const file=input.files[0];
+  if(!/\.csv$/i.test(file.name)){alert('Camada 3 aceita apenas .csv exportados do Blackbox Explorer.');input.value='';return;}
+  const idx=S.stepLogs.length;
+  const entry={name:file.name,color:LOG_COLORS[idx],parsed:null};
+  S.stepLogs.push(entry);
+  renderStepList();
+  try{
+    entry.parsed=parseCsvText(await readText(file),file.name);
+    document.getElementById('btn-step').disabled=false;
+  }catch(e){
+    S.stepLogs.splice(idx,1); renderStepList();
+    alert('Erro ao ler CSV: '+e.message);
+  }
+  input.value='';
+}
+function removeStepLog(i){
+  S.stepLogs.splice(i,1);
+  S.stepLogs.forEach((l,j)=>l.color=LOG_COLORS[j]);
+  renderStepList();
+  if(!S.stepLogs.length) document.getElementById('btn-step').disabled=true;
+}
+function renderStepList(){
+  const el=document.getElementById('step-log-list');
+  if(!S.stepLogs.length){el.innerHTML='<div style="font-size:.78rem;color:var(--muted)">Nenhum log carregado (até 5 CSV)</div>';return;}
+  el.innerHTML=S.stepLogs.map((l,i)=>`
+    <div class="log-item"><span style="color:${l.color}">■</span>
+    <span class="log-name">${l.name}</span>
+    <span style="color:var(--muted);font-size:.72rem">${l.parsed?'✅':'⏳'}</span>
+    <button class="btn-r" onclick="removeStepLog(${i})">✕</button></div>`).join('');
+}
+function analisarStep(){
+  const ready=S.stepLogs.filter(l=>l.parsed);
+  if(!ready.length) return;
+  document.getElementById('result-step').style.display='block';
+  const rollDS=[],pitchDS=[],allRoll=[],allPitch=[];
+  let commonT=null;
+  for(const log of ready){
+    const d=log.parsed;
+    const rc=computeStepResponseCurve(d.spx,d.gx,d.time,500);
+    const pc=computeStepResponseCurve(d.spy,d.gy,d.time,500);
+    const lbl=log.name.replace(/\.csv$/i,'');
+    if(rc){
+      if(!commonT) commonT=rc.tAxis;
+      allRoll.push({...stepMetrics(rc.mean,rc.tAxis),mean:rc.mean,tAxis:rc.tAxis,label:lbl,color:log.color,edgeCount:rc.edgeCount,method:rc.method});
+      rollDS.push({label:`${lbl} (${rc.edgeCount} ${rc.method==='edge'?'steps':'seg.'})`,data:rc.mean,borderColor:log.color,pointRadius:0,tension:.3,borderWidth:2});
+    }
+    if(pc){
+      allPitch.push({...stepMetrics(pc.mean,pc.tAxis),mean:pc.mean,tAxis:pc.tAxis,label:lbl,color:log.color,edgeCount:pc.edgeCount,method:pc.method});
+      pitchDS.push({label:`${lbl} (${pc.edgeCount} ${pc.method==='edge'?'steps':'seg.'})`,data:pc.mean,borderColor:log.color,pointRadius:0,tension:.3,borderWidth:2});
+    }
+  }
+  const refLen=commonT?.length||200;
+  const ref=Array.from({length:refLen},(_,i)=>i<5?0:100);
+  rollDS.unshift({label:'Setpoint 100%',data:ref,borderColor:'#5c6472',borderDash:[5,4],pointRadius:0,borderWidth:1.5,stepped:true});
+  pitchDS.unshift({label:'Setpoint 100%',data:ref,borderColor:'#5c6472',borderDash:[5,4],pointRadius:0,borderWidth:1.5,stepped:true});
+  const labels=commonT||Array.from({length:refLen},(_,i)=>String(i));
+  const scales={x:{title:{display:true,text:'Tempo (ms)'}},y:{title:{display:true,text:'Resposta (%)'},min:-10,max:175}};
+  mkChart('chartRoll',{type:'line',data:{labels,datasets:rollDS},options:{scales}});
+  mkChart('chartPitch',{type:'line',data:{labels,datasets:pitchDS},options:{scales}});
+  S._lastRollMet=allRoll; S._lastPitchMet=allPitch;
+  document.getElementById('roll-metrics').innerHTML=metricsTable(allRoll);
+  document.getElementById('pitch-metrics').innerHTML=metricsTable(allPitch);
+  renderEstimatedCurves();
+}
+function metricsTable(m){
+  return`<table><thead><tr><th>Log</th><th>OS</th><th>Rise</th><th>T50</th><th>Método</th></tr></thead><tbody>`+
+    m.map(r=>`<tr><td style="color:${r.color};font-weight:700">${r.label}</td>
+    <td class="${cc(parseFloat(r.overshoot),12,25)}">${r.overshoot}%</td>
+    <td>${r.riseTime} ms</td><td>${r.t50} ms</td>
+    <td style="font-size:.72rem">${r.method==='edge'?'Edge+Ycorr':'Wiener+Ycorr'}</td></tr>`).join('')+'</tbody></table>';
+}
+
+async function loadBBLSliders(input){
+  if(!input.files.length) return;
+  try{
+    const info=await parseBBLSliders(input.files[0]);
+    Object.assign(S.sliders,info.sliders);
+    S.originalSliders={...info.sliders}; // snapshot for reset
+    S.bblPid=info;
+    syncSlidersUI();
+    document.getElementById('bbl-info').innerHTML=`
+      <div class="al al-s">✅ Sliders lidos de <strong>${info.fileName}</strong>
+      ${info.craftName?' — '+info.craftName:''} · ${info.firmware||''}</div>`;
+    document.getElementById('bbl-section').style.display='block';
+    renderRealPidTable();
+    renderEstimatedCurves();
+  }catch(e){alert('Erro ao ler .bbl/.bfl: '+e.message);}
+  input.value='';
+}
+function syncSlidersUI(){
+  for(const s of SLIDER_ORDER){
+    const el=document.getElementById(s.id);
+    if(el){el.value=S.sliders[s.key];document.getElementById(s.id+'_v').textContent=parseFloat(S.sliders[s.key]).toFixed(2);}
+  }
+  updateLiveThermal();
+  renderRealPidTable();
+}
+function updSlider(el){
+  const def=SLIDER_ORDER.find(s=>s.id===el.id);
+  if(def) S.sliders[def.key]=parseFloat(el.value);
+  document.getElementById(el.id+'_v').textContent=parseFloat(el.value).toFixed(2);
+  updateLiveThermal();
+  renderRealPidTable();
+  renderEstimatedCurves();
+}
+// ═══ LIVE THERMAL WIDGET ══════════════════════════════════════════════════
+function updateLiveThermal(){
+  const sl=S.sliders;
+  const pct=calcThermalPct(sl.dGains, sl.piGains, sl.master);
+  const tz=thermalZone(pct);
+  const bar=document.getElementById('lt-bar');
+  const lbl=document.getElementById('lt-label');
+  if(!bar||!lbl) return;
+  bar.style.width=pct+'%';
+  bar.style.background=tz.color;
+  lbl.style.color=tz.color;
+  lbl.textContent=tz.label+' — '+pct+'%';
+  // Highlight active row, dim others
+  const rows={safe:'lt-row-safe',warn:'lt-row-warn',danger:'lt-row-danger'};
+  const heres={safe:'lt-here-safe',warn:'lt-here-warn',danger:'lt-here-danger'};
+  for(const [k,id] of Object.entries(rows)){
+    const row=document.getElementById(id);
+    const here=document.getElementById(heres[k]);
+    if(!row) continue;
+    const active=tz.cls===k;
+    row.style.fontWeight=active?'700':'400';
+    row.style.background=active?(k==='safe'?'var(--tint-g)':k==='warn'?'var(--tint-y)':'var(--tint-r)'):'';
+    if(here) here.textContent=active?'◀ AQUI':'';
+  }
+}
+function fitQualityClass(r2){
+  if(r2===null||r2===undefined) return 'vw';
+  return r2>=0.9?'vg':r2>=0.75?'vw':'vb';
+}
+function renderEstimatedCurves(){
+  if(!S._lastRollMet.length) return;
+  const sl=S.sliders;
+  const rollRef=S._lastRollMet[0], pitchRef=S._lastPitchMet[0]||S._lastRollMet[0];
+  const m=relMult(sl.dGains,sl.piGains,sl.master,sl.pitchRollD,sl.pitchRollPI);
+  const Ki=sl.iGains;
+  const rollEst=estimateStepCurve(m.kpR,m.kdR,rollRef,Ki);
+  const pitchEst=estimateStepCurve(m.kpP,m.kdP,pitchRef,Ki);
+  // Fit quality — surfaces whether the 2nd-order model is actually a good
+  // stand-in for THIS flight's measured curve, instead of assuming silently
+  // that it always is (the fit tends to be worse the further the flown PIDs
+  // are from a clean, well-damped baseline).
+  const rollFit=getOrFitBase(rollRef), pitchFit=getOrFitBase(pitchRef);
+  // Real measured curve, resampled onto the estimated curve's 1ms grid, so
+  // it can be plotted directly on top for a visual sanity check.
+  const rollMeasured=resampleToAxis(rollRef.mean,rollRef.tAxis,rollEst.tAxis);
+  const pitchMeasured=resampleToAxis(pitchRef.mean,pitchRef.tAxis,pitchEst.tAxis);
+  const ref=Array.from({length:500},(_,i)=>i<5?0:100);
+  const scales={x:{title:{display:true,text:'Tempo (ms)'}},y:{title:{display:true,text:'Resposta (%)'},min:-10,max:175}};
+  mkChart('chartRollEst',{type:'line',data:{labels:rollEst.tAxis,datasets:[
+    {label:'Setpoint',data:ref,borderColor:'#5c6472',borderDash:[5,4],pointRadius:0,borderWidth:1.5,stepped:true},
+    {label:'Medido (voo de referência)',data:rollMeasured,borderColor:'#7c8aa0',pointRadius:0,borderWidth:1.4,borderDash:[3,3],tension:.2},
+    {label:'Estimativa Roll',data:rollEst.curve,borderColor:'#4f9dff',pointRadius:0,tension:.3,borderWidth:2.5}
+  ]},options:{scales}});
+  mkChart('chartPitchEst',{type:'line',data:{labels:pitchEst.tAxis,datasets:[
+    {label:'Setpoint',data:ref,borderColor:'#5c6472',borderDash:[5,4],pointRadius:0,borderWidth:1.5,stepped:true},
+    {label:'Medido (voo de referência)',data:pitchMeasured,borderColor:'#7c8aa0',pointRadius:0,borderWidth:1.4,borderDash:[3,3],tension:.2},
+    {label:'Estimativa Pitch',data:pitchEst.curve,borderColor:'#ff6b5c',pointRadius:0,tension:.3,borderWidth:2.5}
+  ]},options:{scales}});
+  document.getElementById('est-metrics').innerHTML=[
+    ['🔄 Ultrapassagem Roll',rollEst.met.overshoot+'%'],['⏱ Tempo resposta Roll',rollEst.met.t50+' ms'],
+    ['🔄 Ultrapassagem Pitch',pitchEst.met.overshoot+'%'],['⏱ Tempo resposta Pitch',pitchEst.met.t50+' ms']
+    ].map(([l,v])=>`<div class="mbox" style="flex:1;min-width:180px"><div class="mlbl">${l}</div><div class="mval">${v}</div></div>`).join('');
+  // Resize estimated charts after render
+  requestAnimationFrame(()=>{
+    Object.values(charts).forEach(c=>{if(c.canvas?.id?.includes('Est')) c.resize();});
+  });
+}
+
+// ═══ TABELA DE VALORES REAIS DE PID (estilo Betaflight) ═══════════════════
+// Projeta os números absolutos de P, I e D por eixo que estariam configurados
+// no Betaflight se os sliders atuais fossem aplicados, partindo da base real
+// gravada no cabeçalho do .bbl/.bfl carregado. Usa a MESMA lógica de "razão
+// contra o slider original do próprio log" que relMult() já usa para gerar
+// kpR/kdR/kpP/kdP (as curvas estimadas de Step Response) — isto é, rP/rD/
+// rExtraP/rExtraD abaixo são calculados exatamente como em relMult(), então
+// os números desta tabela e as curvas de Roll/Pitch estimadas SEMPRE se
+// movem em conjunto: se a tabela mostra D subindo 20%, a curva estimada
+// daquele eixo está usando o mesmo +20% de Kd. Só P, I e D entram aqui
+// porque são os termos que a Camada 3 (Step P-D) de fato tuna; D Max e FF
+// ficam para a Camada 4.
+function computeLivePid(){
+  if(!S.bblPid||!S.bblPid.rawPid||!S.originalSliders) return null;
+  const raw=S.bblPid.rawPid, o=S.originalSliders, c=S.sliders;
+  function ratio(curV,origV){
+    const ov=parseFloat(origV);
+    if(!ov||!isFinite(ov)||Math.abs(ov)<1e-9) return 1;
+    return parseFloat(curV)/ov;
+  }
+  const rP=ratio(c.piGains*c.master, o.piGains*o.master);       // == relMult().kpR
+  const rD=ratio(c.dGains*c.master, o.dGains*o.master);         // == relMult().kdR
+  const rExtraP=ratio(c.pitchRollPI, o.pitchRollPI);
+  const rExtraD=ratio(c.pitchRollD, o.pitchRollD);
+  const rI=ratio(c.iGains, o.iGains);
+  function scaleAxis(a,rP_,rI_,rD_){
+    return{P:a.P!=null?a.P*rP_:null, I:a.I!=null?a.I*rI_:null, D:a.D!=null?a.D*rD_:null};
+  }
+  return{
+    roll:scaleAxis(raw.roll,rP,rI,rD),                                    // mult 1:1 com kpR/kdR
+    pitch:scaleAxis(raw.pitch,rP*rExtraP,rI*rExtraP,rD*rExtraD),          // mult 1:1 com kpP/kdP
+  };
+}
+function renderRealPidTable(){
+  const el=document.getElementById('real-pid-table');
+  if(!el) return;
+  if(!S.bblPid||!S.bblPid.rawPid){
+    el.innerHTML='<div style="font-size:.76rem;color:var(--muted);margin-bottom:12px">ℹ️ Não encontrei <code>rollPID</code>/<code>pitchPID</code>/<code>yawPID</code> no cabeçalho deste log — a tabela de valores reais fica indisponível para este arquivo (os sliders abaixo continuam funcionando normalmente).</div>';
+    return;
+  }
+  const live=computeLivePid();
+  const axes=[
+    {key:'roll',label:'ROLL',color:'#4f9dff'},
+    {key:'pitch',label:'PITCH',color:'#ff6b5c'}
+  ];
+  const fmt=v=>v==null?'—':Math.round(v);
+  const rows=axes.map(a=>{const v=live[a.key];return`
+    <tr style="background:${a.color}14">
+      <td style="padding:9px 12px;font-family:var(--display);font-weight:700;color:${a.color};border-left:3px solid ${a.color};border-top:none;border-right:none;border-bottom:none;border-radius:10px 0 0 10px;white-space:nowrap">${a.label}</td>
+      <td class="tnum" style="padding:9px 12px;text-align:center;border:none">${fmt(v.P)}</td>
+      <td class="tnum" style="padding:9px 12px;text-align:center;border:none">${fmt(v.I)}</td>
+      <td class="tnum" style="padding:9px 12px;text-align:center;border:none;border-radius:0 10px 10px 0">${fmt(v.D)}</td>
+    </tr>`;}).join('');
+  el.innerHTML=`
+    <div class="ctitle" style="font-size:.9rem;margin-bottom:4px">🎛️ Valores reais de PID (equivalente Betaflight)</div>
+    <p style="font-family:var(--body);font-size:.74rem;color:var(--muted);margin-bottom:8px">Projeção dos números absolutos de P/I/D que estariam no Betaflight com os sliders atuais, partindo dos PIDs reais gravados no cabeçalho de <strong>${S.bblPid.fileName}</strong>. Usa a mesma razão de sliders que gera as curvas estimadas abaixo — nos valores originais do log, deve bater exatamente com o que aparecia na aba PID Tuning do Betaflight naquele voo.</p>
+    <table style="width:100%;border-collapse:separate;border-spacing:0 6px;font-size:.82rem;margin-bottom:10px">
+      <thead><tr style="color:var(--muted)">
+        <th style="padding:4px 12px;text-align:left;background:none;border:none;text-transform:none;font-weight:600">Eixo</th>
+        <th style="padding:4px 12px;text-align:center;background:none;border:none;text-transform:none;font-weight:600">Proportional</th>
+        <th style="padding:4px 12px;text-align:center;background:none;border:none;text-transform:none;font-weight:600">Integral</th>
+        <th style="padding:4px 12px;text-align:center;background:none;border:none;text-transform:none;font-weight:600">Derivative</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ═══ RESET PIDs TO ORIGINAL ═══════════════════════════════════════════════
+function resetPIDs(){
+  if(!S.originalSliders){alert('Carregue um log .bbl/.bfl primeiro para ter os sliders originais.');return;}
+  Object.assign(S.sliders, S.originalSliders);
+  syncSlidersUI();
+  renderRealPidTable();
+  renderEstimatedCurves();
+  const banner=document.getElementById('pid-suggest-banner');
+  banner.className='al al-i';
+  banner.innerHTML='↩️ <strong>Sliders restaurados</strong> — valores originais do log .bbl/.bfl aplicados.';
+  banner.style.display='block';
+}
+
+// ═══ PID SUGGESTION ENGINE ════════════════════════════════════════════════
+// Phase 1 — find global dGains (+ piGains if needed) so OS is 0–5% on both axes.
+// Phase 2 — with OS constrained, sweep pitchRollD (and pitchRollPI) to minimise
+//           |T50_roll − T50_pitch|, keeping OS of both axes inside 0–5%.
+function suggestPIDs(){
+  if(!S._lastRollMet.length){alert('Gere as curvas de Step Response primeiro.');return;}
+  const OS_MIN=0, OS_MAX=5;
+  const SL_MIN=0, SL_MAX=2.0, STEP=0.05;
+  const LAT_LO=15, LAT_HI=25;               // faixa alvo de latência (Passo 5)
+  const D_STEP1_CEIL=1.40, D_STEP3_CEIL=1.55;
+  const P_STEP2_FLOOR=0.75, P_STEP4_FLOOR=0.60;
+  const PR_MIN=0.85, PR_MAX=1.25;            // faixa de Pitch:Roll D e P/I/FF (Passos 6-7)
+  const MASTER_CEIL=1.30;
+
+  // ── D ceiling — flat value used for every drone (Camada 3 safety net) ───
+  const dSafeInfo = computeDSafeMax();
+  const D_SAFE_MAX = dSafeInfo.value; // 1.55 — igual ao teto do Passo 3
+  const P_SAFE_MAX_LOCAL = P_SAFE_MAX;
+
+  function snap(v){return parseFloat(Math.min(SL_MAX,Math.max(SL_MIN,Math.round(v/STEP)*STEP)).toFixed(2));}
+  function clamp(v,lo,hi){return Math.min(hi,Math.max(lo,v));}
+  // Índice térmico combinado — usado só como cinto de segurança extra ao
+  // elevar o Master no Passo 5 (nunca deixa passar do limite validado).
+  function thermIdx(d,p,m){ return d*m + (p*m)*0.4; }
+
+  const sl={...S.sliders};
+  const rollRef=S._lastRollMet[0];
+  const pitchRef=S._lastPitchMet[0]||S._lastRollMet[0];
+
+  function evalAxes(kpR,kdR,kpP,kdP){
+    const Ki=sl.iGains; // I não é ajustado pelo motor de sugestão
+    const r=estimateStepCurve(kpR,kdR,rollRef,Ki);
+    const p=estimateStepCurve(kpP,kdP,pitchRef,Ki);
+    return{
+      rollOS:parseFloat(r.met.overshoot), rollT50:parseFloat(r.met.t50)||999,
+      pitchOS:parseFloat(p.met.overshoot), pitchT50:parseFloat(p.met.t50)||999,
+      rollCurve:r, pitchCurve:p
+    };
+  }
+  function evalWith(d,p,prd,prp,master){
+    const m=relMult(d,p,master,prd,prp);
+    return evalAxes(m.kpR,m.kdR,m.kpP,m.kdP);
+  }
+  function osOk(e){ return e.rollOS>=OS_MIN&&e.rollOS<=OS_MAX&&e.pitchOS>=OS_MIN&&e.pitchOS<=OS_MAX; }
+  function maxOS(e){ return Math.max(e.rollOS,e.pitchOS); }
+  function t50Gap(e){ return osOk(e)?Math.abs(e.rollT50-e.pitchT50):9999; }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // ESCADA DE PASSOS proposta pelo usuário (busca overshoot 0–5%):
+  //   1) D até 1.40  →  2) P&I até piso 0.75  →  3) D até 1.55  →
+  //   4) P&I até piso 0.60 (se ainda não chegar, aceita OS>5% como compromisso)
+  //   5) Master até 1.30 mirando latência 15–25 ms
+  //   6) Pitch:Roll D em [0.85, 1.25]  →  7) Pitch:Roll P/I/FF em [0.85, 1.25]
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Acha o menor D em [dLo,dHi] que traz OS<=OS_MAX (mais D = mais amortecimento).
+  function raiseDForOS(dLo,dHi,p,prd,prp,master){
+    const atCeil=evalWith(dHi,p,prd,prp,master);
+    if(maxOS(atCeil)>OS_MAX) return{ok:false,d:dHi,e:atCeil};
+    let lo=dLo,hi=dHi;
+    for(let i=0;i<40;i++){
+      const mid=(lo+hi)/2;
+      const e=evalWith(mid,p,prd,prp,master);
+      if(maxOS(e)<=OS_MAX) hi=mid; else lo=mid;
+    }
+    return{ok:true,d:hi,e:evalWith(hi,p,prd,prp,master)};
+  }
+  // Acha o maior P em [pFloor,pHi] (menor redução) que traz OS<=OS_MAX.
+  function lowerPForOS(pHi,pFloor,d,prd,prp,master){
+    const atFloor=evalWith(d,pFloor,prd,prp,master);
+    if(maxOS(atFloor)>OS_MAX) return{ok:false,p:pFloor,e:atFloor};
+    let lo=pFloor,hi=pHi;
+    for(let i=0;i<40;i++){
+      const mid=(lo+hi)/2;
+      const e=evalWith(d,mid,prd,prp,master);
+      if(maxOS(e)<=OS_MAX) lo=mid; else hi=mid;
+    }
+    return{ok:true,p:lo,e:evalWith(d,lo,prd,prp,master)};
+  }
+
+  let workD=sl.dGains, workP=sl.piGains, workPRD=sl.pitchRollD, workPRP=sl.pitchRollPI, workMaster=sl.master;
+  let stepUsed=0, gaveUp=false;
+
+  let curEval=evalWith(workD,workP,workPRD,workPRP,workMaster);
+  if(!osOk(curEval)){
+    // PASSO 1 — D até 1.40
+    const r1=raiseDForOS(workD, D_STEP1_CEIL, workP, workPRD, workPRP, workMaster);
+    workD=r1.d; curEval=r1.e;
+    if(r1.ok){ stepUsed=1; }
+    else{
+      // PASSO 2 — P&I até piso 0.75 (D fixo em 1.40)
+      const r2=lowerPForOS(workP, P_STEP2_FLOOR, workD, workPRD, workPRP, workMaster);
+      workP=r2.p; curEval=r2.e;
+      if(r2.ok){ stepUsed=2; }
+      else{
+        // PASSO 3 — D até 1.55 (P fixo em 0.75)
+        const r3=raiseDForOS(workD, D_STEP3_CEIL, workP, workPRD, workPRP, workMaster);
+        workD=r3.d; curEval=r3.e;
+        if(r3.ok){ stepUsed=3; }
+        else{
+          // PASSO 4 — P&I até piso 0.60 (D fixo em 1.55)
+          const r4=lowerPForOS(workP, P_STEP4_FLOOR, workD, workPRD, workPRP, workMaster);
+          workP=r4.p; curEval=r4.e;
+          stepUsed=4;
+          if(!r4.ok) gaveUp=true; // OS fica acima de 5% — aceito, conforme a regra do usuário
+        }
+      }
+    }
+  }
+
+  // PASSO 5 — Latência: DESATIVADO a pedido do usuário. O Master Multiplier
+  // não é mais ajustado automaticamente pelo motor de sugestão — permanece
+  // travado em 1.0 (o motor só reporta a latência resultante dos passos
+  // 1–4, sem tentar corrigi-la subindo o Master). thermIdx()/THERMAL_LIMIT/
+  // MASTER_CEIL ficam sem uso aqui, mas foram mantidos no código caso o
+  // ajuste automático de latência via Master seja reativado no futuro.
+  workMaster=1.0;
+  curEval=evalWith(workD,workP,workPRD,workPRP,workMaster);
+
+  // PASSO 6 — iguala latência Roll/Pitch via Pitch:Roll D, dentro de [0.85, 1.25]
+  {
+    let bestGap=t50Gap(curEval), bestPRD=clamp(workPRD,PR_MIN,PR_MAX);
+    for(let i=0;i<=32;i++){
+      const v=PR_MIN+i*(PR_MAX-PR_MIN)/32;
+      const g=t50Gap(evalWith(workD,workP,v,workPRP,workMaster));
+      if(g<bestGap){bestGap=g;bestPRD=v;}
+    }
+    let lo=Math.max(PR_MIN,bestPRD-0.2), hi=Math.min(PR_MAX,bestPRD+0.2);
+    for(let i=0;i<24;i++){
+      const mid=(lo+hi)/2;
+      const e=evalWith(workD,workP,mid,workPRP,workMaster);
+      const g=t50Gap(e);
+      if(g<bestGap){bestGap=g;bestPRD=mid;}
+      const diff=e.pitchT50-e.rollT50;
+      if(diff>0)hi=mid; else lo=mid;
+      if(Math.abs(hi-lo)<0.005)break;
+    }
+    workPRD=bestPRD;
+    curEval=evalWith(workD,workP,workPRD,workPRP,workMaster);
+  }
+
+  // PASSO 7 — ajuste fino com Pitch:Roll P/I/FF, dentro de [0.85, 1.25]
+  {
+    const residual=t50Gap(curEval);
+    if(residual>2){
+      let bestGap=residual, bestPRP=clamp(workPRP,PR_MIN,PR_MAX);
+      for(let i=0;i<=20;i++){
+        const v=PR_MIN+i*(PR_MAX-PR_MIN)/20;
+        const g=t50Gap(evalWith(workD,workP,workPRD,v,workMaster));
+        if(g<bestGap){bestGap=g;bestPRP=v;}
+      }
+      let lo=Math.max(PR_MIN,bestPRP-0.15), hi=Math.min(PR_MAX,bestPRP+0.15);
+      for(let i=0;i<24;i++){
+        const mid=(lo+hi)/2;
+        const e=evalWith(workD,workP,workPRD,mid,workMaster);
+        const g=t50Gap(e);
+        if(g<bestGap){bestGap=g;bestPRP=mid;}
+        const diff=e.pitchT50-e.rollT50;
+        if(diff>0)hi=mid; else lo=mid;
+        if(Math.abs(hi-lo)<0.005)break;
+      }
+      workPRP=bestPRP;
+      curEval=evalWith(workD,workP,workPRD,workPRP,workMaster);
+    }
+  }
+
+  // ── Ajusta para os steps do slider
+  const sugD=snap(workD), sugP=snap(workP);
+  const sugPRD=snap(clamp(workPRD,PR_MIN,PR_MAX)), sugPRP=snap(clamp(workPRP,PR_MIN,PR_MAX));
+  const sugMaster=snap(workMaster);
+
+  // ── Avaliação final com valores já arredondados
+  const finalM=relMult(sugD,sugP,sugMaster,sugPRD,sugPRP);
+  const finalEval=evalAxes(finalM.kpR,finalM.kdR,finalM.kpP,finalM.kdP);
+
+  // Estado "antes" para exibição (curva medida originalmente, se sl.* == originalSliders)
+  const beforeM=relMult(sl.dGains,sl.piGains,sl.master,sl.pitchRollD,sl.pitchRollPI);
+  const beforeEval=evalAxes(beforeM.kpR,beforeM.kdR,beforeM.kpP,beforeM.kdP);
+
+  // ── Aplica ao estado & UI
+  const prevD=S.sliders.dGains, prevP=S.sliders.piGains;
+  const prevPRD=S.sliders.pitchRollD, prevPRP=S.sliders.pitchRollPI;
+  const prevMaster=S.sliders.master;
+  const prevFF=S.sliders.ffGains, prevDMax=S.sliders.dMax;
+  S.sliders.dGains=sugD; S.sliders.piGains=sugP;
+  S.sliders.pitchRollD=sugPRD; S.sliders.pitchRollPI=sugPRP;
+  S.sliders.master=sugMaster;
+  // A Camada 3 (PID) não mexe em Feed Forward nem em D Max — ambos ficam
+  // zerados aqui; Feed Forward só é ajustado depois, na Camada 4.
+  S.sliders.ffGains=0; S.sliders.dMax=0;
+  syncSlidersUI();
+  renderEstimatedCurves();
+
+  // ── Indicador de estresse térmico para exibição
+  const thermalPct = calcThermalPct(sugD, sugP, sugMaster);
+  const tz = thermalZone(thermalPct);
+  const thermalColor = tz.color;
+  const thermalLabel = tz.label;
+  const dPct = Math.round(sugD / D_SAFE_MAX * 100);
+  const pPct = Math.round(sugP / P_SAFE_MAX_LOCAL * 100);
+
+  // ── Monta o banner
+  const rollOsOk=finalEval.rollOS>=OS_MIN&&finalEval.rollOS<=OS_MAX;
+  const pitchOsOk=finalEval.pitchOS>=OS_MIN&&finalEval.pitchOS<=OS_MAX;
+  const t50Diff=Math.abs(finalEval.rollT50-finalEval.pitchT50).toFixed(1);
+  const allOk=rollOsOk&&pitchOsOk;
+  const cls=allOk?'al-s':rollOsOk||pitchOsOk?'al-w':'al-r';
+  const icon=allOk?'✅':rollOsOk||pitchOsOk?'⚠️':'❌';
+  const fmtOS=v=>isNaN(v)?'—':v.toFixed(1)+'%';
+  const fmtT50=v=>isNaN(v)||v===999?'—':v.toFixed(1)+' ms';
+
+  function chg(label,prev,curr){
+    if(Math.abs(curr-prev)<0.001) return '';
+    return `${label}: <span style="color:var(--muted)">${prev.toFixed(2)}</span> → <strong>${curr.toFixed(2)}</strong>&nbsp;&nbsp;`;
+  }
+  const changesHTML=chg('D Gains',prevD,sugD)+chg('P & I Gains',prevP,sugP)+
+                    chg('Pitch:Roll D',prevPRD,sugPRD)+chg('Pitch:Roll PI',prevPRP,sugPRP)+
+                    chg('Master Multiplier',prevMaster,sugMaster)+
+                    chg('Feed Forward Gains',prevFF,0)+chg('D Max',prevDMax,0);
+  const latRollBef=beforeEval.rollT50, latPitchBef=beforeEval.pitchT50;
+  const latRollAft=finalEval.rollT50, latPitchAft=finalEval.pitchT50;
+  const latImprRoll=isNaN(latRollBef)||latRollBef===999?null:(latRollBef-latRollAft).toFixed(1);
+  const latImprPitch=isNaN(latPitchBef)||latPitchBef===999?null:(latPitchBef-latPitchAft).toFixed(1);
+
+  // ── Texto explicando em qual passo da escada a meta foi (ou não) atingida
+  const STEP_LABELS={
+    0:'Ultrapassagem já estava dentro de 0–5% — nenhum ajuste de D/P foi necessário.',
+    1:'Passo 1: D Gains ajustado (até o teto de 1.40) trouxe a ultrapassagem para 0–5%.',
+    2:'Passo 2: D no teto de 1.40 não foi suficiente — P &amp; I Gains foi reduzido (até o piso de 0.75) para fechar a meta.',
+    3:'Passo 3: mesmo com P &amp; I no piso de 0.75, foi preciso liberar D Gains até 1.55 (teto de segurança) para atingir a meta.',
+    4:gaveUp
+      ? 'Passo 4: mesmo com D em 1.55 e P &amp; I reduzido até o piso de 0.60, não foi possível trazer a ultrapassagem para 0–5% dentro dos limites de segurança — a sugestão aplicada é o melhor compromisso possível (overshoot acima de 5%). Vale revisar a Camada 2 (Filtros) antes de insistir no PID.'
+      : 'Passo 4: D em 1.55 e P &amp; I reduzido até 0.60 trouxeram a ultrapassagem para 0–5%.'
+  };
+  const stepHTML=`<div class="al al-i" style="margin:10px 0;font-size:.78rem">🪜 <strong>${STEP_LABELS[stepUsed]}</strong></div>`;
+
+  const latFinal=Math.max(finalEval.rollT50,finalEval.pitchT50);
+  const latOk=latFinal>=LAT_LO&&latFinal<=LAT_HI;
+  const latHTML=`<div class="al al-i" style="margin:10px 0;font-size:.78rem">
+    ⏱️ <strong>Passo 5 — Latência:</strong> desativado — Master Multiplier permanece fixo em <strong>1.00</strong> e não é mais ajustado automaticamente por este motor.
+    Tempo de resposta final (apenas informativo, resultado dos Passos 1–4): <strong>${fmtT50(latFinal)}</strong>
+    ${latOk?'— dentro da faixa de referência de 15–25 ms.':'— fora da faixa de referência de 15–25 ms; se quiser reduzir a latência, ajuste o Master Multiplier manualmente.'}
+  </div>`;
+
+  const hitWall = gaveUp;
+  const wallHTML = hitWall ? `
+    <div class="al al-w" style="margin:10px 0;">
+      ⚠️ <strong>Limites de segurança atingidos — esta sugestão não é um ótimo convergido.</strong><br>
+      D Gains chegou ao teto de ${D_STEP3_CEIL.toFixed(2)} e P &amp; I Gains ao piso de ${P_STEP4_FLOOR.toFixed(2)} sem trazer a ultrapassagem para 0–5%.
+      Isso costuma indicar ressonância/ruído não filtrado — revise a <strong>Camada 2 (Filtros)</strong> antes de insistir só no PID.
+    </div>` : '';
+
+
+  const banner=document.getElementById('pid-suggest-banner');
+  banner.className='al '+cls;
+  banner.innerHTML=`
+    ${icon} <strong>Sugestão aplicada nos sliders</strong><br>
+    ${changesHTML||'<em>Nenhuma alteração necessária.</em>'}<br>
+    ${stepHTML}
+    ${latHTML}
+    ${wallHTML}
+    <table style="margin-top:8px;font-size:.78rem;width:auto;border-collapse:collapse">
+      <thead><tr>
+        <th style="padding:3px 10px 3px 0;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)">Eixo</th>
+        <th style="padding:3px 10px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)">Ultrapassagem<br><span style="font-weight:400;font-size:.68rem">(antes)</span></th>
+        <th style="padding:3px 10px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)">Ultrapassagem<br><span style="font-weight:400;font-size:.68rem">(depois)</span></th>
+        <th style="padding:3px 10px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)">Tempo de resposta<br><span style="font-weight:400;font-size:.68rem">(antes)</span></th>
+        <th style="padding:3px 10px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)">Tempo de resposta<br><span style="font-weight:400;font-size:.68rem">(depois)</span></th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td style="padding:3px 10px 3px 0;font-weight:700;color:var(--roll)">Roll</td>
+          <td class="tnum" style="padding:3px 10px">${fmtOS(beforeEval.rollOS)}</td>
+          <td class="tnum" style="padding:3px 10px;font-weight:700;color:${rollOsOk?'var(--green)':'var(--red)'}">${fmtOS(finalEval.rollOS)}</td>
+          <td class="tnum" style="padding:3px 10px">${fmtT50(beforeEval.rollT50)}</td>
+          <td class="tnum" style="padding:3px 10px;font-weight:700">${fmtT50(finalEval.rollT50)}</td>
+        </tr>
+        <tr>
+          <td style="padding:3px 10px 3px 0;font-weight:700;color:var(--pitch)">Pitch</td>
+          <td class="tnum" style="padding:3px 10px">${fmtOS(beforeEval.pitchOS)}</td>
+          <td class="tnum" style="padding:3px 10px;font-weight:700;color:${pitchOsOk?'var(--green)':'var(--red)'}">${fmtOS(finalEval.pitchOS)}</td>
+          <td class="tnum" style="padding:3px 10px">${fmtT50(beforeEval.pitchT50)}</td>
+          <td class="tnum" style="padding:3px 10px;font-weight:700">${fmtT50(finalEval.pitchT50)}</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top:8px;font-size:.76rem;color:var(--muted)">
+      Diferença de latência Roll↔Pitch: <strong style="color:${parseFloat(t50Diff)<5?'var(--green)':parseFloat(t50Diff)<10?'var(--yellow)':'var(--red)'}">${t50Diff} ms</strong> (Passos 6–7, faixa Pitch:Roll 0.85–1.25)
+      ${latImprRoll!==null&&parseFloat(latImprRoll)>0.5?`&nbsp;·&nbsp; ⚡ Latência reduzida: Roll <strong style="color:var(--green)">−${latImprRoll} ms</strong>${latImprPitch!==null?`, Pitch <strong style="color:var(--green)">−${latImprPitch} ms</strong>`:''}`:''} 
+      &nbsp;·&nbsp; <em>Aplique no Betaflight e refaça o voo para confirmar.</em>
+    </div>
+    <div style="margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;padding:10px 14px;font-size:.76rem;">
+      <strong>🌡️ Estimativa de carga térmica nos motores</strong>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span>Índice combinado (D + P×0.4) / limite</span>
+            <span style="font-weight:700;color:${thermalColor}">${thermalLabel} — ${thermalPct}%</span>
+          </div>
+          <div style="background:var(--track);border-radius:2px;height:10px;overflow:hidden;position:relative;">
+            <div style="position:absolute;left:0;top:0;height:100%;width:60%;background:var(--green);opacity:.25;"></div>
+            <div style="position:absolute;left:60%;top:0;height:100%;width:25%;background:var(--yellow);opacity:.25;"></div>
+            <div style="position:absolute;left:85%;top:0;height:100%;width:15%;background:var(--red);opacity:.25;"></div>
+            <div style="height:100%;width:${thermalPct}%;background:${thermalColor};border-radius:4px;transition:width .3s;"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:2px;font-size:.66rem;color:var(--muted)">
+            <span>0%</span><span style="margin-left:52%">60%</span><span>85%</span><span>100%</span>
+          </div>
+        </div>
+      </div>
+      <table style="margin-top:10px;width:100%;border-collapse:collapse;font-size:.75rem;">
+        <thead>
+          <tr style="background:var(--surface2);">
+            <th style="padding:5px 8px;text-align:left;border-bottom:2px solid var(--border);color:var(--muted)">Zona</th>
+            <th style="padding:5px 8px;text-align:center;border-bottom:2px solid var(--border);color:var(--muted)">% do índice</th>
+            <th style="padding:5px 8px;text-align:left;border-bottom:2px solid var(--border);color:var(--muted)">Significado</th>
+            <th style="padding:5px 8px;text-align:center;border-bottom:2px solid var(--border);color:var(--muted)">Status atual</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="${thermalPct<60?'background:var(--tint-g);font-weight:700':''}">
+            <td style="padding:5px 8px;color:var(--green)">🟢 Seguro</td>
+            <td style="padding:5px 8px;text-align:center">0 – 59%</td>
+            <td style="padding:5px 8px">PIDs conservadores · motores frios · ruído D baixo</td>
+            <td style="padding:5px 8px;text-align:center">${thermalPct<60?'◀ AQUI':''}</td>
+          </tr>
+          <tr style="${thermalPct>=60&&thermalPct<85?'background:var(--tint-y);font-weight:700':''}">
+            <td style="padding:5px 8px;color:var(--yellow)">🟡 Atenção</td>
+            <td style="padding:5px 8px;text-align:center">60 – 84%</td>
+            <td style="padding:5px 8px">Carga moderada · monitore temperatura pós-voo</td>
+            <td style="padding:5px 8px;text-align:center">${thermalPct>=60&&thermalPct<85?'◀ AQUI':''}</td>
+          </tr>
+          <tr style="${thermalPct>=85?'background:var(--tint-r);font-weight:700':''}">
+            <td style="padding:5px 8px;color:var(--red)">🔴 Risco Alto</td>
+            <td style="padding:5px 8px;text-align:center">85 – 100%</td>
+            <td style="padding:5px 8px">⚠️ Picos de corrente · possível dano aos motores</td>
+            <td style="padding:5px 8px;text-align:center">${thermalPct>=85?'◀ AQUI':''}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:6px;font-size:.72rem;color:var(--muted)">
+        D Gains: <strong>${sugD.toFixed(2)}</strong> (${dPct}% do teto ${D_SAFE_MAX}) &nbsp;·&nbsp;
+        P&I Gains: <strong>${sugP.toFixed(2)}</strong> (${pPct}% do teto ${P_SAFE_MAX_LOCAL}) &nbsp;·&nbsp;
+        Master: <strong>${sugMaster.toFixed(2)}</strong>
+      </div>
+    </div>`;
+  banner.style.display='block';
+}
+
+// ═══ BUILD UI ══════════════════════════════════════════════════════════════
+function slHTML(s){
+  const v=S.sliders[s.key].toFixed(2);
+  return`<div class="sl-block"><div class="sl-hdr"><span class="sl-name">${s.label}</span><span class="sl-val" id="${s.id}_v">${v}</span></div>
+  <input type="range" id="${s.id}" min="${s.min}" max="${s.max}" step="${s.step}" value="${v}" oninput="updSlider(this)"></div>`;
+}
+// ═══ LAYER 4 — FEED FORWARD ════════════════════════════════════════════════
+// Step 1: initial suggestion (heuristic, before flying) based on prop size and
+// the D/P relationship already found in Camada 3 — bigger/heavier props and
+// higher D tend to need a bit more FF to compensate for slower natural response.
+function suggestFFInitial(){
+  const propMap={'2':0.85,'2.5':0.90,'3':0.95,'5':1.05,'7':1.15,'10':1.25};
+  const propSize=S.drone.propSize||'5';
+  const base=propMap[propSize]??1.0;
+  const dAdj=(S.sliders.dGains-1.0)*0.25; // more D already in use → a bit more FF helps the stick feel crisp without adding overshoot
+  let value=base+dAdj;
+  value=Math.max(0.5,Math.min(2.0,parseFloat(value.toFixed(2))));
+  S.ffSuggested={value,propSize,dGains:S.sliders.dGains};
+  S.sliders.ffGains=value;
+  renderFFInitialBox();
+  syncSlidersUI();
+  const el=document.getElementById('ff_slider');
+  if(el){el.value=value;document.getElementById('ff_slider_v').textContent=value.toFixed(2);}
+}
+function renderFFInitialBox(){
+  const box=document.getElementById('ff-initial-box');
+  if(!box||!S.ffSuggested) return;
+  const s=S.ffSuggested;
+  box.innerHTML=`<div class="al al-i">🧭 <strong>Sugestão inicial: FF = ${s.value.toFixed(2)}</strong>
+    — baseado em hélices ${s.propSize}" e D Gains atual (${s.dGains.toFixed(2)}). Aplique este valor no Betaflight
+    (slider Feed Forward) antes de gravar o voo de validação abaixo.</div>`;
+}
+
+// Detect sharp, sustained stick movements (rolls/flips) in a full flight log and
+// build a normalized response window per event, reusing the edge-detection idea
+// from Camada 3 but tuned for mixed-amplitude maneuvers in free flight.
+function detectFFManeuvers(sp,gyro,time,windowMs=120){
+  const N=sp.length;
+  const diffs=[]; for(let i=1;i<Math.min(time.length,3000);i++){const d=time[i]-time[i-1]; if(d>0) diffs.push(d);}
+  diffs.sort((a,b)=>a-b);
+  const dt=diffs.length?diffs[Math.floor(diffs.length/2)]:0.001;
+  const wSamples=Math.min(Math.round(windowMs/1000/dt),Math.floor(N*0.05));
+  if(wSamples<6) return[];
+  const slewW=Math.max(2,Math.round(0.01/dt));
+  const spAbs=sp.map(Math.abs);
+  const sorted=[...spAbs].filter(v=>v>0).sort((a,b)=>a-b);
+  const big=sorted.length?sorted[Math.floor(sorted.length*0.85)]:50;
+  const thresh=Math.max(big*0.5,80);
+  const events=[]; let lastEdge=-wSamples;
+  for(let i=slewW;i<N-wSamples;i++){
+    const before=Math.abs(sp[i-slewW]), now=Math.abs(sp[i]);
+    if(before<thresh*0.3 && now>=thresh && i-lastEdge>=wSamples){
+      events.push(i); lastEdge=i;
+    }
+  }
+  if(!events.length) return[];
+  const windows=[];
+  for(const e of events){
+    const spLevel=sp[e]; if(Math.abs(spLevel)<thresh*0.3) continue;
+    const sign=spLevel>=0?1:-1;
+    const win=new Array(wSamples);
+    for(let k=0;k<wSamples;k++) win[k]=(gyro[e+k]||0)*sign/Math.abs(spLevel)*100;
+    const spWin=new Array(wSamples);
+    for(let k=0;k<wSamples;k++) spWin[k]=(sp[e+k]||0)*sign/Math.abs(spLevel)*100;
+    windows.push({win,spWin});
+  }
+  if(!windows.length) return[];
+  const mean=new Array(wSamples).fill(0), spMean=new Array(wSamples).fill(0), tAxis=[];
+  for(let k=0;k<wSamples;k++){
+    let s=0,sp2=0; for(const w of windows){s+=w.win[k]; sp2+=w.spWin[k];}
+    mean[k]=parseFloat((s/windows.length).toFixed(2));
+    spMean[k]=parseFloat((sp2/windows.length).toFixed(2));
+    tAxis.push(parseFloat((k*dt*1000).toFixed(1)));
+  }
+  return[{mean,spMean,tAxis,count:windows.length,dt}];
+}
+// Classic FF signature: at the very start of the move (first ~10-15 ms) the
+// gyro should already be tracking a meaningful fraction of the setpoint
+// (FF pushes the motors ahead of the error). Too little FF → sluggish start
+// (low initial tracking, "laggy" feel). Too much FF → a sharp spike right at
+// the edge that decays back down before the rest of the loop (P/D) settles in.
+function evalFFSignature(mean,spMean,tAxis){
+  const idxAt=ms=>{ for(let i=0;i<tAxis.length;i++) if(tAxis[i]>=ms) return i; return tAxis.length-1; };
+  const i10=idxAt(10), i20=idxAt(20), i40=idxAt(40), iEarlyEnd=idxAt(25);
+  const initialTrack=mean[i10]; // % of setpoint already reached at ~10ms
+  let earlyPeak=-Infinity; for(let i=0;i<=iEarlyEnd;i++) if(mean[i]>earlyPeak) earlyPeak=mean[i];
+  const settleRef=mean[i40];
+  const spike=Math.max(0,earlyPeak-Math.max(settleRef,100));
+  return{initialTrack:parseFloat(initialTrack.toFixed(1)), spike:parseFloat(spike.toFixed(1)), settleRef:parseFloat(settleRef.toFixed(1))};
+}
+
+async function loadFFLog(input){
+  if(!input.files.length) return;
+  const file=input.files[0];
+  if(!/\.csv$/i.test(file.name)){alert('Carregue um .csv exportado do Blackbox Explorer.');input.value='';return;}
+  try{
+    S.ffFlightLog=parseCsvText(await readText(file),file.name);
+    document.getElementById('ff-log-name').textContent='✅ '+file.name;
+    document.getElementById('btn-ff').disabled=false;
+  }catch(e){alert('Erro ao ler CSV: '+e.message);}
+  input.value='';
+}
+
+function analisarFF(){
+  const d=S.ffFlightLog;
+  if(!d) return;
+  const rollWin=detectFFManeuvers(d.spx,d.gx,d.time,120)[0];
+  const pitchWin=detectFFManeuvers(d.spy,d.gy,d.time,120)[0];
+  if(!rollWin && !pitchWin){
+    alert('Não foram encontradas manobras rápidas suficientes (rolls/flips) neste log. Grave um voo com entradas de stick mais bruscas e completas.');
+    return;
+  }
+  document.getElementById('result-ff').style.display='block';
+  const scales={x:{title:{display:true,text:'Tempo desde a entrada (ms)'}},y:{title:{display:true,text:'Resposta (%)'},min:-20,max:200}};
+
+  function paintAxis(win,canvasId,color,label){
+    if(!win){ const c=document.getElementById(canvasId); if(c) c.parentElement.innerHTML='<div style="font-size:.78rem;color:var(--muted);padding:20px">Sem manobras suficientes neste eixo.</div>'; return null; }
+    mkChart(canvasId,{type:'line',data:{labels:win.tAxis,datasets:[
+      {label:'Setpoint (normalizado)',data:win.spMean,borderColor:'#5c6472',borderDash:[5,4],pointRadius:0,borderWidth:1.5},
+      {label:label,data:win.mean,borderColor:color,pointRadius:0,tension:.25,borderWidth:2.5}
+    ]},options:{scales}});
+    return evalFFSignature(win.mean,win.spMean,win.tAxis);
+  }
+  const rollSig=paintAxis(rollWin,'chartFFRoll','#4f9dff',`Giroscópio Roll (${rollWin?.count||0} manobras)`);
+  const pitchSig=paintAxis(pitchWin,'chartFFPitch','#ff6b5c',`Giroscópio Pitch (${pitchWin?.count||0} manobras)`);
+
+  // ── Classification thresholds (heuristic, consistent with the rest of the tool)
+  const LOW_TRACK=18, HIGH_SPIKE=14;
+  function classify(sig){
+    if(!sig) return null;
+    if(sig.spike>HIGH_SPIKE) return{status:'high', delta:-Math.min(0.35, sig.spike*0.012)};
+    if(sig.initialTrack<LOW_TRACK) return{status:'low', delta:Math.min(0.35,(LOW_TRACK-sig.initialTrack)*0.012)};
+    return{status:'ok', delta:0};
+  }
+  const rollC=classify(rollSig), pitchC=classify(pitchSig);
+  const deltas=[rollC,pitchC].filter(Boolean).map(c=>c.delta);
+  const avgDelta=deltas.length?deltas.reduce((a,b)=>a+b,0)/deltas.length:0;
+  const current=S.sliders.ffGains;
+  const suggested=Math.max(0,Math.min(2,parseFloat((current+avgDelta).toFixed(2))));
+  const anyHigh=[rollC,pitchC].some(c=>c&&c.status==='high');
+  const anyLow=[rollC,pitchC].some(c=>c&&c.status==='low');
+  let verdict, alClass;
+  if(!anyHigh&&!anyLow){verdict='✅ Feed Forward parece adequado nos dois eixos — boa relação entre rastreamento inicial e ausência de spike.'; alClass='al-s';}
+  else if(anyHigh&&!anyLow){verdict='🔻 Spike logo após a entrada de stick detectado — sinal de Feed Forward alto demais. Sugerida redução.'; alClass='al-w';}
+  else if(anyLow&&!anyHigh){verdict='🔺 Rastreamento inicial baixo (resposta "atrasada" ao stick) — sinal de Feed Forward baixo demais. Sugerido aumento.'; alClass='al-w';}
+  else {verdict='⚠️ Comportamento misto entre eixos (um pede mais, outro pede menos) — ajuste com cautela e valide com novo voo.'; alClass='al-w';}
+
+  function axisLine(label,sig,c){
+    if(!sig) return `<tr><td>${label}</td><td colspan="3" style="color:var(--muted)">sem dados</td></tr>`;
+    const statusLbl={ok:'🟢 Adequado',high:'🔻 FF alto',low:'🔺 FF baixo'}[c.status];
+    return `<tr><td>${label}</td><td>${sig.initialTrack}%</td><td>${sig.spike}%</td><td>${statusLbl}</td></tr>`;
+  }
+  document.getElementById('ff-report').innerHTML=`
+    <div class="al ${alClass}">${verdict}</div>
+    <table><thead><tr><th>Eixo</th><th>Rastreamento ~10ms</th><th>Spike inicial</th><th>Diagnóstico</th></tr></thead>
+    <tbody>${axisLine('Roll',rollSig,rollC)}${axisLine('Pitch',pitchSig,pitchC)}</tbody></table>
+    <div style="margin-top:8px;font-size:.8rem;color:var(--muted)">
+      FF atual: <strong style="color:var(--accent)">${current.toFixed(2)}</strong> ·
+      FF sugerido: <strong style="color:${suggested===current?'var(--green)':'var(--yellow)'}">${suggested.toFixed(2)}</strong>
+    </div>`;
+  S.ffAnalysis={rollSig,pitchSig,suggested,current};
+}
+
+function updFFSlider(el){
+  S.sliders.ffGains=parseFloat(el.value);
+  document.getElementById('ff_slider_v').textContent=parseFloat(el.value).toFixed(2);
+  const main=document.getElementById('sl_ffG');
+  if(main){main.value=el.value; document.getElementById('sl_ffG_v').textContent=parseFloat(el.value).toFixed(2);}
+}
+function confirmFF(applySuggested){
+  const banner=document.getElementById('ff-confirm-banner');
+  if(applySuggested){
+    if(!S.ffAnalysis){alert('Analise um log de voo primeiro.');return;}
+    S.sliders.ffGains=S.ffAnalysis.suggested;
+    document.getElementById('ff_slider').value=S.ffAnalysis.suggested;
+    document.getElementById('ff_slider_v').textContent=S.ffAnalysis.suggested.toFixed(2);
+    syncSlidersUI();
+    S.ffConfirmed='adjusted';
+    banner.className='al al-w';
+    banner.innerHTML=`🎯 <strong>Ajuste aplicado:</strong> Feed Forward definido para <strong>${S.ffAnalysis.suggested.toFixed(2)}</strong>.
+      Aplique no Betaflight e regrave um voo semelhante para confirmar a melhora.`;
+  } else {
+    S.ffConfirmed='confirmed';
+    banner.className='al al-s';
+    banner.innerHTML=`✅ <strong>Valor confirmado:</strong> Feed Forward mantido em <strong>${S.sliders.ffGains.toFixed(2)}</strong>.`;
+  }
+  banner.style.display='block';
+}
+
+// ═══ INDIVIDUAL NOTES — important tuning factors ═══════════════════════════
+const FF_NOTE_FACTORS=[
+  {id:'bateria',title:'🔋 Sag de bateria', text:'Voos com bateria fraca no fim alteram o ganho efetivo do motor (menos volts = menos resposta). Faça o voo de validação com a bateria entre ~80% e ~30% de carga, evitando os extremos.'},
+  {id:'temp',title:'🌡️ Temperatura dos motores', text:'Sinta os motores logo após o voo. Se estiverem muito quentes mesmo com Thermal Index em zona segura, o ambiente (calor, vento) pode estar mascarando o resultado — repita em outro dia se necessário.'},
+  {id:'helices',title:'🌀 Desgaste das hélices', text:'Hélices gastas ou desbalanceadas adicionam ruído de alta frequência que pode ser confundido com Feed Forward excessivo. Use um conjunto novo/equilibrado ao validar a Camada 4.'},
+  {id:'looptime',title:'⏱️ Looptime / taxa do log', text:'Logs gravados em looptime baixo (ex.: 4kHz vs 8kHz) reduzem a resolução do spike inicial de FF. Prefira blackbox em alta taxa quando possível.'},
+  {id:'cg',title:'⚖️ Peso e distribuição de massa (CG)', text:'Mudanças de payload (GoPro, bateria diferente) deslocam o centro de gravidade e podem exigir pequenos ajustes finos após esta etapa.'},
+  {id:'manobras',title:'🎮 Variedade de manobras no log', text:'Use uma mistura real de rolls parciais e flips completos — FF ajustado só com flips de 360° pode ficar agressivo demais para correções pequenas do dia a dia.'}
+];
+function renderFFNotes(){
+  const el=document.getElementById('ff-notes');
+  if(!el) return;
+  el.innerHTML=FF_NOTE_FACTORS.map(f=>`
+    <div class="al al-i" style="margin-bottom:8px"><strong>${f.title}</strong><br>${f.text}</div>`).join('');
+}
+
+function build(){
+
+
+  document.getElementById('main').innerHTML=`
+<section id="s1" class="step active">
+  <div class="card"><div class="ctitle">Camada 1 — Informações do Drone</div>
+  <label class="fl">Drone cadastrado</label>
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+    <select id="d-selector" style="flex:1" onchange="onDroneSelectorChange(this)"></select>
+    <button class="btn btn-p" style="white-space:nowrap" onclick="addDrone()" title="Cadastrar um novo drone">➕ Novo drone</button>
+    <button id="d-delete-btn" class="btn btn-r" style="white-space:nowrap" onclick="deleteDrone()" title="Excluir o drone selecionado">🗑️ Excluir</button>
+  </div>
+  <div class="g2">
+    <div><label class="fl">Frame</label><input type="text" id="d-frame" placeholder="Ex: Argus F405, Pavo20…"></div>
+    <div><label class="fl">Tamanho das hélices (pol.)</label>
+      <select id="d-prop"><option value="2">2"</option><option value="2.5">2.5"</option><option value="3">3"</option>
+      <option value="5" selected>5"</option><option value="7">7"</option><option value="10">10"</option></select></div>
+    <div><label class="fl">Motor (modelo)</label><input type="text" id="d-motor" placeholder="Ex: 2207"></div>
+    <div><label class="fl">Versão Betaflight</label>
+      <select id="d-bf"><option value="4.2">4.2</option><option value="4.3">4.3</option>
+      <option value="4.4">4.4</option><option value="4.5" selected>4.5</option><option value="4.5.2">4.5.2</option></select></div>
+  </div>
+  <div class="g2" style="margin-top:14px">
+    <div><label class="fl">KV do motor</label><input type="text" id="d-kv" inputmode="numeric" placeholder="Ex: 1750"></div>
+    <div><label class="fl">Bateria (células)</label>
+      <select id="d-cells"><option value="">— não informado —</option>
+      <option value="1">1S</option><option value="2">2S</option><option value="3">3S</option>
+      <option value="4">4S</option><option value="6">6S</option><option value="8">8S</option></select></div>
+  </div>
+  <div style="font-size:.72rem;color:var(--muted);margin-top:6px">KV e células são informativos (não alteram mais o cálculo do PID). O teto de segurança de D Gains é fixo em 1.55 para todos os drones.</div>
+  <button class="btn btn-p btn-full" onclick="saveDrone()">💾 Salvar informações</button>
+  <div id="drone-summary" style="margin-top:12px"></div>
+  <div class="btn-row"><button class="btn btn-p" onclick="go(2)">Avançar → Filtros</button></div>
+  </div>
+</section>
+
+<section id="s2" class="step">
+  <div class="card"><div class="ctitle">Camada 2 — Análise de Filtros (Hover)</div>
+  <div class="inst"><strong>Procedimento (baseado no fluxo recomendado pela comunidade — Oscar Liang / Blackbox Explorer):</strong> antes de gravar, ative <strong>Debug Mode = GYRO_SCALED</strong> e taxa de log 2 kHz (ou 1.6 kHz em gyro BMI270) nas configurações de Blackbox — isso grava o gyro cru junto do filtrado, necessário para medir o atraso da filtragem. Depois voe: decole com pouco stick, faça 2–3 <strong>throttle sweeps</strong> (suba o throttle de 0% a 100% em 5–10s) e mais alguns segundos de hover, ~30s no total. Exporte o CSV do Blackbox Explorer e carregue abaixo. O sistema analisa ruído, ressonâncias, atraso de filtragem e a banda de ruído do motor (gráfico Frequência × Throttle), e gera o CLI de filtros compatível com a versão BF da Camada 1. Depois de aplicar, grave outro log igual e compare.</div>
+
+  <div class="ctop">Log 1 — Hover inicial (antes ou baseline)</div>
+  <div class="dz"><input type="file" accept=".csv,.txt,.log" onchange="loadHoverBefore(this)">
+    <div class="dz-txt">Hover inicial</div><div class="dz-hint">CSV exportado do Blackbox Explorer</div></div>
+  <div id="hover-before-name" style="font-size:.78rem;color:var(--muted);margin-top:6px">Nenhum arquivo</div>
+  <button id="btn-filter1" class="btn btn-p btn-full" disabled onclick="analisarFiltros()">🔍 Analisar filtros e gerar CLI</button>
+
+  <div id="result-filters" style="display:none;margin-top:16px">
+    <div id="filter-report"></div>
+    <div class="cli" style="margin-top:12px"><button class="cli-copy" onclick="copyCLI('cli-filters',this)">📋 Copiar</button><span id="cli-filters"></span></div>
+  </div>
+
+  <hr>
+  <div class="ctop">Log 2 — Hover após aplicar filtros (validação)</div>
+  <div class="dz"><input type="file" accept=".csv,.txt,.log" onchange="loadHoverAfter(this)">
+    <div class="dz-txt">Hover pós-filtros</div><div class="dz-hint">Mesmo procedimento, após aplicar o CLI acima</div></div>
+  <div id="hover-after-name" style="font-size:.78rem;color:var(--muted);margin-top:6px">Nenhum arquivo</div>
+  <button id="btn-filter2" class="btn btn-o btn-full" disabled onclick="compararFiltros()">📊 Comparar melhora nas vibrações</button>
+  <div id="result-compare" style="display:none;margin-top:14px"><div id="filter-compare"></div></div>
+
+  <div class="btn-row"><button class="btn btn-o" onclick="go(1)">← Drone</button><button class="btn btn-p" onclick="go(3)">Avançar → Step P-D</button></div>
+  </div>
+</section>
+
+<section id="s3" class="step">
+  <div class="card"><div class="ctitle">Camada 3 — Step Response (relação P-D)</div>
+  <div class="inst"><strong>Procedimento de tuning:</strong> FF = 0 · D Max = 0 · I Gains = 0,4. Faça vários movimentos rápidos de stick (roll/pitch), exporte cada voo como <strong>.csv</strong> e carregue até 5 logs. Algoritmo compatível com PIDtoolbox v0.7+ (edge-averaging + Y Correction + suavização MA-3; fallback Wiener).</div>
+
+  <div class="dz"><input type="file" accept=".csv,.CSV" onchange="addStepLog(this)">
+    <div class="dz-txt">Adicionar log CSV</div><div class="dz-hint">Até 5 arquivos · .csv do Blackbox Explorer</div></div>
+  <div class="log-list" id="step-log-list"></div>
+  <button id="btn-step" class="btn btn-p btn-full" disabled onclick="analisarStep()">📉 Gerar curvas de Step Response</button>
+
+  <div id="result-step" style="display:none;margin-top:16px">
+    <div class="g2">
+      <div><div class="ctop">Roll — Step Response</div><div class="cbox"><canvas id="chartRoll"></canvas></div><div id="roll-metrics" style="margin-top:8px"></div></div>
+      <div><div class="ctop">Pitch — Step Response</div><div class="cbox"><canvas id="chartPitch"></canvas></div><div id="pitch-metrics" style="margin-top:8px"></div></div>
+    </div>
+
+    <hr>
+    <div class="ctitle">Sliders PID (do log .bbl / .bfl)</div>
+    <div class="inst">Carregue o <strong>.bbl ou .bfl</strong> do mesmo voo de tuning — apenas os sliders simplified são extraídos do cabeçalho binário (sem decodificar frames de voo).</div>
+    <div class="dz"><input type="file" accept=".bbl,.bfl,.BBL,.BFL" onchange="loadBBLSliders(this)">
+      <div class="dz-txt">Log .bbl / .bfl para sliders</div></div>
+    <div id="bbl-info"></div>
+
+    <div id="bbl-section" style="display:none">
+    <hr>
+    <div class="ctitle">Previsão — Step Response</div>
+    <p style="font-size:.78rem;color:var(--muted);margin-bottom:10px">Modelo de 2ª ordem calibrado pela curva medida. Ajuste os sliders à esquerda para prever overshoot e latência antes de voar. A linha cinza tracejada é a curva <strong>medida real</strong> do voo de referência — com os sliders nos valores originais do log, ela deve praticamente coincidir com a curva estimada (azul/vermelha). Quanto mais elas se afastarem, e quanto menor o <strong>R²</strong> abaixo, menos confiável é a extrapolação para esse voo (isso tende a piorar em voos com PIDs bem diferentes do default, onde a resposta real foge do formato de 2ª ordem).</p>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+      <button class="btn btn-p" onclick="suggestPIDs()" title="Escada de 7 passos: D até 1.40 → P&I até 0.75 → D até 1.55 → P&I até 0.60 → Master até 1.30 (latência 15-25ms) → Pitch:Roll D e P/I/FF (0.85-1.25)">🎯 Sugerir PIDs otimizados (OS 0–5%)</button>
+      <button class="btn btn-o" onclick="resetPIDs()" title="Restaura os sliders para os valores originais do log .bbl/.bfl carregado">↩️ Restaurar originais</button>
+      <span style="font-size:.76rem;color:var(--muted)">Aplica modelo matemático sobre Roll e Pitch para minimizar overshoot.</span>
+    </div>
+    <div id="pid-suggest-banner" class="al" style="display:none;margin-bottom:12px"></div>
+    <div class="preview-layout" style="display:flex;flex-direction:column;gap:16px;">
+      <div>
+        <div id="real-pid-table"></div>
+        <div class="slider-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px 16px;">${SLIDER_ORDER.map(slHTML).join('')}</div>
+      </div>
+      <div id="est-charts-col" class="g2">
+        <div style="display:flex;flex-direction:column;"><div class="ctop">📈 Roll estimado</div><div class="cbox" style="height:220px;"><canvas id="chartRollEst"></canvas></div></div>
+        <div style="display:flex;flex-direction:column;"><div class="ctop">📈 Pitch estimado</div><div class="cbox" style="height:220px;"><canvas id="chartPitchEst"></canvas></div></div>
+      </div>
+      <div style="display:flex;flex-direction:row;gap:12px;flex-wrap:wrap;align-items:flex-start;">
+        <div id="est-metrics" style="display:flex;flex-direction:row;gap:8px;flex-wrap:wrap;flex:1;min-width:260px;"></div>
+        <div id="live-thermal" style="background:var(--surface2);border:1px solid var(--border);border-radius:2px;padding:10px 14px;font-size:.76rem;flex:1;min-width:320px;">
+          <strong>🌡️ Carga térmica estimada (tempo real)</strong>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:6px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:200px;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+                <span style="color:var(--muted)">Índice D + P×0.4 / limite</span>
+                <span id="lt-label" style="font-weight:700">—</span>
+              </div>
+              <div style="background:var(--track);border-radius:2px;height:10px;overflow:hidden;position:relative;">
+                <div style="position:absolute;left:0;top:0;height:100%;width:60%;background:var(--green);opacity:.18;"></div>
+                <div style="position:absolute;left:60%;top:0;height:100%;width:25%;background:var(--yellow);opacity:.18;"></div>
+                <div style="position:absolute;left:85%;top:0;height:100%;width:15%;background:var(--red);opacity:.18;"></div>
+                <div id="lt-bar" style="height:100%;width:0%;border-radius:4px;transition:width .25s,background .25s;"></div>
+              </div>
+            </div>
+            <table style="font-size:.73rem;border-collapse:collapse;min-width:220px;">
+              <thead><tr>
+                <th style="padding:3px 8px;color:var(--muted);text-align:left;border-bottom:1px solid var(--border)">Zona</th>
+                <th style="padding:3px 8px;color:var(--muted);text-align:center;border-bottom:1px solid var(--border)">%</th>
+                <th style="padding:3px 8px;color:var(--muted);text-align:center;border-bottom:1px solid var(--border)">Atual</th>
+              </tr></thead>
+              <tbody>
+                <tr id="lt-row-safe"><td style="padding:3px 8px;color:var(--green)">🟢 Seguro</td><td style="padding:3px 8px;text-align:center">0–59%</td><td id="lt-here-safe" style="padding:3px 8px;text-align:center"></td></tr>
+                <tr id="lt-row-warn"><td style="padding:3px 8px;color:var(--yellow)">🟡 Atenção</td><td style="padding:3px 8px;text-align:center">60–84%</td><td id="lt-here-warn" style="padding:3px 8px;text-align:center"></td></tr>
+                <tr id="lt-row-danger"><td style="padding:3px 8px;color:var(--red)">🔴 Risco Alto</td><td style="padding:3px 8px;text-align:center">85–100%</td><td id="lt-here-danger" style="padding:3px 8px;text-align:center"></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+  <div class="btn-row"><button class="btn btn-o" onclick="go(2)">← Filtros</button><button class="btn btn-p" onclick="go(4)">Avançar → Feed Forward</button></div>
+  </div>
+</section>
+
+<section id="s4" class="step">
+  <div class="card"><div class="ctitle">Camada 4 — Feed Forward (voo completo: rolls e flips)</div>
+  <div class="inst"><strong>Procedimento:</strong> com D Max, I Gains e a relação P-D já definidos na Camada 3, esta etapa ajusta apenas o <strong>Feed Forward</strong>. Primeiro aplicamos uma sugestão inicial, depois você grava um voo completo com diversos rolls e flips (entradas rápidas de stick) e o sistema compara o quão bem o giroscópio acompanha o setpoint no instante da entrada.</div>
+
+  <div class="ctitle" style="font-size:.92rem">Passo 1 — Sugestão inicial de Feed Forward</div>
+  <div id="ff-initial-box"></div>
+  <button class="btn btn-p btn-full" onclick="suggestFFInitial()">🧭 Sugerir valor inicial de Feed Forward</button>
+
+  <hr>
+  <div class="ctitle" style="font-size:.92rem">Passo 2 — Log do voo completo</div>
+  <div class="dz"><input type="file" accept=".csv,.CSV" onchange="loadFFLog(this)">
+    <div class="dz-txt">Carregar log do voo (rolls + flips)</div><div class="dz-hint">.csv exportado do Blackbox Explorer · voo completo, não apenas steps isolados</div></div>
+  <div id="ff-log-name" style="font-size:.78rem;color:var(--muted);margin-top:6px">Nenhum arquivo</div>
+  <button id="btn-ff" class="btn btn-p btn-full" disabled onclick="analisarFF()">🪂 Analisar resposta de Feed Forward</button>
+
+  <div id="result-ff" style="display:none;margin-top:16px">
+    <div class="g2">
+      <div><div class="ctop">Roll — manobra representativa</div><div class="cbox"><canvas id="chartFFRoll"></canvas></div></div>
+      <div><div class="ctop">Pitch — manobra representativa</div><div class="cbox"><canvas id="chartFFPitch"></canvas></div></div>
+    </div>
+    <div id="ff-report" style="margin-top:14px"></div>
+
+    <hr>
+    <div class="ctitle" style="font-size:.92rem">Passo 3 — Confirmação</div>
+    <p style="font-size:.78rem;color:var(--muted);margin-bottom:10px">Com base na análise acima, confirme o valor de Feed Forward ou aplique o ajuste sugerido. Depois de aplicar no Betaflight, regrave um voo semelhante e repita a análise para validar.</p>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px">
+      <div class="sl-block" style="flex:1;min-width:240px;margin-bottom:0">
+        <div class="sl-hdr"><span class="sl-name">Feed Forward Gains (atual)</span><span class="sl-val" id="ff_slider_v">${S.sliders.ffGains.toFixed(2)}</span></div>
+        <input type="range" id="ff_slider" min="0" max="2" step="0.05" value="${S.sliders.ffGains}" oninput="updFFSlider(this)">
+      </div>
+      <button class="btn btn-p" onclick="confirmFF(false)">✅ Confirmar valor atual</button>
+      <button class="btn btn-o" onclick="confirmFF(true)">🎯 Aplicar ajuste sugerido</button>
+    </div>
+    <div id="ff-confirm-banner" class="al" style="display:none"></div>
+  </div>
+
+  <hr>
+  <div class="ctitle" style="font-size:.92rem">Notas individuais — fatores importantes no tuning</div>
+  <div id="ff-notes"></div>
+
+  <div class="btn-row"><button class="btn btn-o" onclick="go(3)">← Step P-D</button></div>
+  </div>
+</section>`;
+  renderFFNotes();
+  if(S.ffSuggested) renderFFInitialBox();
+}
+
+buildNav(); build(); go(1); loadDroneFromStorage();
+</script>
+</body>
+</html>
